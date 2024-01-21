@@ -7,7 +7,7 @@ namespace Aikom.FunctionalAnimation
     /// Container for used editor functions
     /// </summary>
     [Serializable]
-    public class FunctionConstructor
+    public class FunctionConstructor : ICloneable
     {
         [SerializeField] private FunctionWrapper[] _functions = new FunctionWrapper[0];
 
@@ -15,6 +15,23 @@ namespace Aikom.FunctionalAnimation
         /// Lenght of the function array this wrapper generates the final function from
         /// </summary>
         public int Length { get => _functions.Length; }
+
+        /// <summary>
+        /// Implimentation of the ICloneable interface
+        /// </summary>
+        /// <returns></returns>
+        public object Clone()
+        {
+            var copy = new FunctionConstructor();
+            copy._functions = new FunctionWrapper[_functions.Length];
+            for(int i = 0; i < _functions.Length; i++)
+            {
+                copy._functions[i] = new FunctionWrapper();
+                copy._functions[i]._function = _functions[i]._function;
+                copy._functions[i]._invert = _functions[i]._invert;
+            }
+            return copy;
+        }
 
         /// <summary>
         /// Generates a function from the selected functions in the editor. If the array is empty, a linear function is returned

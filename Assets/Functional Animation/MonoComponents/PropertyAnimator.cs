@@ -11,7 +11,6 @@ namespace Aikom.FunctionalAnimation
         public override PropertyContainer<float>[] ActiveTargets 
         { 
             get => _activeTargets;
-            protected set => _activeTargets = (FloatContainer[])value;
         }
 
         protected override void SetTargets()
