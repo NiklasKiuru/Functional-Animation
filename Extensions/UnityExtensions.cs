@@ -10,7 +10,6 @@ namespace Aikom.FunctionalAnimation.Extensions
     /// </summary>
     public static class UnityExtensions
     {   
-
         /// <summary>
         /// Interpolates a color
         /// </summary>

@@ -28,6 +28,11 @@ namespace Aikom.FunctionalAnimation
         public float Time { get => _time; }
 
         /// <summary>
+        /// Current real time in seconds
+        /// </summary>
+        public float RealTime { get => _time / _speed; }
+
+        /// <summary>
         /// Duration of the time cycle the keeper measures
         /// </summary>
         public float Duration { get => 1 / _speed; }
@@ -49,6 +54,8 @@ namespace Aikom.FunctionalAnimation
 
         public TimeKeeper(float speed, TimeControl ctrl = TimeControl.OneShot)
         {
+            if (speed == float.PositiveInfinity)
+                speed = 0;
             _speed = speed;
             _direction = 1;
             SetTimeControl(ctrl);
@@ -92,6 +99,16 @@ namespace Aikom.FunctionalAnimation
         public float Tick(float delta)
         {
             return _controller.Invoke(delta);
+        }
+
+        /// <summary>
+        /// Sets the time as in real time seconds
+        /// </summary>
+        /// <param name="time"></param>
+        public void SetTime(float time)
+        {   
+            _time = time / Duration;
+            _time = Mathf.Clamp01(_time);
         }
 
         /// <summary>

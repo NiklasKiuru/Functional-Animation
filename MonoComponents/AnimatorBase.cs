@@ -1,53 +1,128 @@
 ﻿using System.Linq;
 using UnityEngine;
 using System;
-using System.Net.Http.Headers;
+using System.Collections;
 
 namespace Aikom.FunctionalAnimation
-{
+{   
+    /// <summary>
+    /// Base class for all property animators
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
     public abstract class AnimatorBase<T> : MonoBehaviour where T : struct
     {
         [Tooltip("Should all object properties be animated on awake?")]
-        [SerializeField] private bool _animateOnAwake = true;
+        [SerializeField] private bool _animateAllOnAwake = true;
 
         [Tooltip("If checked will sync the animation duration of all properties")]
         [SerializeField] private bool _syncAll;
 
-        public bool AnimateOnAwake { get => _animateOnAwake; }
-        public bool SyncAll { get => _syncAll; }
-        public abstract PropertyContainer<T>[] ActiveTargets { get; protected set; }
+        [Tooltip("Max duration of the animation if syncronizing all")]
+        [SerializeField] private float _maxDuration;
+
+        [Tooltip("If syncronized this will loop the central time controller")]
+        [SerializeField] private bool _loop;
+
+        [Tooltip("Delay before the animation starts playing")]
+        [SerializeField] private float _delay;
+
+        private TimeKeeper _timer;
+        private Action _animate;
+
+        /// <summary>
+        /// Array of property containers that hold the properties to be animated
+        /// </summary>
+        public abstract PropertyContainer<T>[] ActiveTargets { get; }
+        public bool SyncAll { get => _syncAll; protected set => _syncAll = value; }
+        public float MaxDuration { get => _maxDuration; protected set => _maxDuration = value; }
+        public bool Loop { get => _loop; protected set => _loop = value; }
 
         private void Awake()
         {
-            SetTargets();
-            if (_animateOnAwake)
+            Validate();
+        }
+
+        private void Start()
+        {   
+            if(_delay > 0)
             {
-                foreach (var target in ActiveTargets)
+                var oldValues = new bool[ActiveTargets.Length];
+                for (int i = 0; i < ActiveTargets.Length; i++)
                 {
-                    target.Animate = true;
+                    oldValues[i] = ActiveTargets[i].Animate;
+                    ActiveTargets[i].Animate = false;
                 }
+
+                StartCoroutine(StartDelayed(oldValues));
             }
         }
 
         private void Update()
         {
-            foreach (var target in ActiveTargets)
-            {
-                if(target.Animate)
-                    target.Update();
-            }
+            _animate?.Invoke();
         }
 
         protected virtual void OnValidate()
         {
-            if (ActiveTargets == null || ActiveTargets.Length == 1)
-                SetTargets();
-            if(_syncAll)
+            Validate();
+        }
+
+        protected void Validate()
+        {
+            SetTargets();
+            if (_syncAll)
             {
-                foreach(var target in ActiveTargets)
+                var duration = 0f;
+                foreach (var target in ActiveTargets)
                 {
-                    var duration = ActiveTargets.Max(t => t.Duration);  // This is just to avoid cases where there is just one null target
-                    target.Duration = duration;
+                    if (target != null)
+                        duration = Mathf.Max(duration, target.Duration, _maxDuration);
+                }
+                _maxDuration = duration;
+                if(_maxDuration == 0)
+                {
+                    PauseAll(true);
+                    return;
+                }
+                    
+                foreach (var target in ActiveTargets)
+                {
+                    if (target != null)
+                    {
+                        target.Syncronize(_maxDuration);
+                    }
+                }
+
+                _timer = new TimeKeeper(1 / _maxDuration, _loop ? TimeControl.Loop : TimeControl.OneShot);
+                _animate = () =>
+                {
+                    foreach (var target in ActiveTargets)
+                    {
+                        if (target.Animate)
+                        {
+                            target.UpdateSync(_timer.Tick() * _maxDuration);
+                        }
+
+                    }
+                };
+            }
+            else
+            {
+                _animate = () =>
+                {
+                    foreach (var target in ActiveTargets)
+                    {
+                        if (target.Animate)
+                            target.Update();
+                    }
+                };
+            }
+
+            if (_animateAllOnAwake)
+            {
+                foreach (var target in ActiveTargets)
+                {
+                    target.Animate = true;
                 }
             }
         }
@@ -135,6 +210,18 @@ namespace Aikom.FunctionalAnimation
             }
         }
 
+        /// <summary>
+        /// Sets the targets for the animator
+        /// </summary>
         protected abstract void SetTargets();
+
+        private IEnumerator StartDelayed(bool[] oldValues)
+        {
+            yield return new WaitForSeconds(_delay);
+            for (int i = 0; i < ActiveTargets.Length; i++)
+            {
+                ActiveTargets[i].Animate = oldValues[i];
+            }
+        }
     }
 }
