@@ -11,9 +11,6 @@ namespace Aikom.FunctionalAnimation
     /// <typeparam name="T"></typeparam>
     public abstract class AnimatorBase<T> : MonoBehaviour where T : struct
     {
-        [Tooltip("Should all object properties be animated on awake?")]
-        [SerializeField] private bool _animateAllOnAwake = true;
-
         [Tooltip("If checked will sync the animation duration of all properties")]
         [SerializeField] private bool _syncAll;
 
@@ -33,6 +30,7 @@ namespace Aikom.FunctionalAnimation
         /// Array of property containers that hold the properties to be animated
         /// </summary>
         public abstract PropertyContainer<T>[] ActiveTargets { get; }
+        internal TimeKeeper Timer { get => _timer; }
         public bool SyncAll { get => _syncAll; protected set => _syncAll = value; }
         public float MaxDuration { get => _maxDuration; protected set => _maxDuration = value; }
         public bool Loop { get => _loop; protected set => _loop = value; }
@@ -108,6 +106,7 @@ namespace Aikom.FunctionalAnimation
             }
             else
             {
+                _timer = new TimeKeeper(0);
                 _animate = () =>
                 {
                     foreach (var target in ActiveTargets)
@@ -116,14 +115,6 @@ namespace Aikom.FunctionalAnimation
                             target.Update();
                     }
                 };
-            }
-
-            if (_animateAllOnAwake)
-            {
-                foreach (var target in ActiveTargets)
-                {
-                    target.Animate = true;
-                }
             }
         }
 
@@ -166,7 +157,7 @@ namespace Aikom.FunctionalAnimation
         /// <param name="propContainerIndex"></param>
         /// <param name="callback"></param>
         /// <param name="evt"></param>
-        public void RegisterCallBack(int propContainerIndex, Action<T> callback, EventType evt)
+        public virtual void RegisterCallBack(int propContainerIndex, Action<T> callback, EventType evt)
         {
             if (propContainerIndex < ActiveTargets.Length && propContainerIndex > 0)
             {
@@ -191,7 +182,7 @@ namespace Aikom.FunctionalAnimation
         /// <param name="propContainerIndex"></param>
         /// <param name="callback"></param>
         /// <param name="evt"></param>
-        public void UnRegisterCallBack(int propContainerIndex, Action<T> callback, EventType evt)
+        public virtual void UnRegisterCallBack(int propContainerIndex, Action<T> callback, EventType evt)
         {
             if (propContainerIndex < ActiveTargets.Length && propContainerIndex > 0)
             {

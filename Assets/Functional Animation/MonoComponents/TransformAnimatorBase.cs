@@ -1,5 +1,4 @@
-﻿using System;
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace Aikom.FunctionalAnimation
 {
@@ -28,13 +27,17 @@ namespace Aikom.FunctionalAnimation
         {
             _container.Position.SetNewTarget(_container.Position.Offset + transform.position);
             _container.Position.CreateInterpolator(transform.position, (p) => { transform.position = p; });
-            ActiveTargets[0] = _container.Position;
+
             _container.Rotation.SetNewTarget(_container.Rotation.Offset + transform.rotation.eulerAngles);
             _container.Rotation.CreateInterpolator(transform.rotation.eulerAngles, (r) => { transform.rotation = Quaternion.Euler(r); });
-            ActiveTargets[1] = _container.Rotation;
+
             _container.Scale.SetNewTarget(_container.Scale.Offset + transform.localScale);
             _container.Scale.CreateInterpolator(transform.localScale, (s) => { transform.localScale = s; });
-            ActiveTargets[2] = _container.Scale;
+
+            for(int i = 0; i < 3; i++)
+            {
+                ActiveTargets[i] = _container[i];
+            }
         }
     }
 
