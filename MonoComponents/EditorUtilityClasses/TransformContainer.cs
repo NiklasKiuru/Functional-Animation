@@ -18,5 +18,17 @@ namespace Aikom.FunctionalAnimation
         public T Position { get => _position; internal set => _position = value; }
         public T Rotation { get => _rotation; internal set => _rotation = value; }
         public T Scale { get => _scale; internal set => _scale = value; }
+
+        public T this[int index] 
+        { 
+            get =>
+                index switch
+                {
+                    0 => _position,
+                    1 => _rotation,
+                    2 => _scale,
+                    _ => throw new IndexOutOfRangeException()
+                };
+        }
     }
 }
