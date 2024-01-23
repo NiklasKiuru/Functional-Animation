@@ -15,8 +15,9 @@ namespace Aikom.FunctionalAnimation.Editor
         private RenderElement _renderElement;
         private Action _unregisterCbs;
         private FloatField[] _normalTimeValues;
+        private VisualElement _scriptableElement;
 
-        [MenuItem("Examples/My Editor Window")]
+        [MenuItem("Window/Functional Animation")]
         public static void Init()
         {
             var window = GetWindow<GraphWindow>();
@@ -24,10 +25,13 @@ namespace Aikom.FunctionalAnimation.Editor
         }
 
         private void OnEnable()
-        {
+        {   
+            var styleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>("Assets/UI/GraphWindowStyles.uss");
             var root = rootVisualElement;
             root.style.flexDirection = FlexDirection.Row;
-            var material = AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/GraphMaterial.mat");
+
+            // Render element
+            var material = AssetDatabase.LoadAssetAtPath<Material>("Assets/UI/GraphMaterial.mat");
             _renderElement = new RenderElement(material, root);
             _renderElement.style.width = new StyleLength(new Length(80f, LengthUnit.Percent));
             _renderElement.style.height = new StyleLength(new Length(80f, LengthUnit.Percent));
@@ -37,6 +41,7 @@ namespace Aikom.FunctionalAnimation.Editor
             _renderElement.style.borderLeftColor = new StyleColor(new Color(0.8f, 0.8f, 0.8f));
             _renderElement.style.borderBottomColor = new StyleColor(new Color(0.8f, 0.8f, 0.8f));
 
+            // Side bar
             var sideBar = new VisualElement();
             sideBar.style.width = new StyleLength(new Length(20f, LengthUnit.Percent));
             sideBar.style.height = new StyleLength(new Length(100f, LengthUnit.Percent));
@@ -48,6 +53,7 @@ namespace Aikom.FunctionalAnimation.Editor
             header.style.marginBottom = new StyleLength(new Length(10f, LengthUnit.Pixel));
             header.style.marginTop = new StyleLength(new Length(5f, LengthUnit.Pixel));
             
+            // Graph settings
             var subHeaderGraphSettings = new Label("Graph settings");
             subHeaderGraphSettings.style.fontSize = 12;
             subHeaderGraphSettings.style.marginBottom = new StyleLength(new Length(5f, LengthUnit.Pixel));
@@ -64,31 +70,62 @@ namespace Aikom.FunctionalAnimation.Editor
             gridLineAmountSlider.value = _renderElement.GridLines;
             gridLineAmountSlider.showInputField = true;
 
+            // Animator properties
             var animatorHeader = new Label("Animator");
             animatorHeader.style.fontSize = 12;
             animatorHeader.style.marginBottom = new StyleLength(new Length(5f, LengthUnit.Pixel));
             animatorHeader.style.marginTop = new StyleLength(new Length(10f, LengthUnit.Pixel));
 
+            var timeHeader = new Label("Local time");
+            timeHeader.style.fontSize = 12;
+            timeHeader.style.marginBottom = new StyleLength(new Length(5f, LengthUnit.Pixel));
+            timeHeader.style.marginTop = new StyleLength(new Length(10f, LengthUnit.Pixel));
+            timeHeader.style.unityTextAlign = TextAnchor.MiddleLeft;
+            timeHeader.style.paddingLeft = new StyleLength(new Length(152f, LengthUnit.Pixel));
+
             var positionValue = new FloatField();
             positionValue.label = "Position";
-
             var rotationValue = new FloatField();
             rotationValue.label = "Rotation";
-
             var scaleValue = new FloatField();
             scaleValue.label = "Scale";
 
             _normalTimeValues = new FloatField[3] { positionValue, rotationValue, scaleValue };
 
+            // Custom element for scriptable animator
+            _scriptableElement = new VisualElement();
+            _scriptableElement.style.flexDirection = FlexDirection.Column;
+            _scriptableElement.style.width = new StyleLength(new Length(100f, LengthUnit.Percent));
+
+            var scriptableHeader = new Label("Scriptable Animator");
+            scriptableHeader.style.fontSize = 12;
+            scriptableHeader.style.marginBottom = new StyleLength(new Length(5f, LengthUnit.Pixel));
+            scriptableHeader.style.marginTop = new StyleLength(new Length(10f, LengthUnit.Pixel));
+            scriptableHeader.style.unityTextAlign = TextAnchor.MiddleLeft;
+            scriptableHeader.style.paddingLeft = new StyleLength(new Length(152f, LengthUnit.Pixel));
+
+            var animationNameField = new TextField();
+            animationNameField.label = "Animation name";
+
+            var button = new Button();
+            button.text = "Load";
+            
+            _scriptableElement.Add(scriptableHeader);
+            _scriptableElement.Add(animationNameField);
+            _scriptableElement.Add(button);
+            _scriptableElement.style.visibility = Visibility.Hidden;
+
+            // Tree construction
             sideBar.Add(header);
             sideBar.Add(subHeaderGraphSettings);
             sideBar.Add(graphVertexCountSlider);
             sideBar.Add(gridLineAmountSlider);
             sideBar.Add(animatorHeader);
+            sideBar.Add(timeHeader);
             sideBar.Add(positionValue);
             sideBar.Add(rotationValue);
             sideBar.Add(scaleValue);
-
+            sideBar.Add(_scriptableElement);
             root.Add(sideBar);
             root.Add(_renderElement);
 
@@ -110,6 +147,7 @@ namespace Aikom.FunctionalAnimation.Editor
             {
                 graphVertexCountSlider.UnregisterValueChangedCallback(ChangeVertexCount);
                 gridLineAmountSlider.UnregisterValueChangedCallback(ChangeGridLineCount);
+                UnBindLoadButton();
             }
         }
 
@@ -125,10 +163,31 @@ namespace Aikom.FunctionalAnimation.Editor
             if (obj != null && obj.TryGetComponent<TransformAnimator>(out var anim))
             {
                 _renderElement.Animator = anim;
+                if(anim is ScriptableTransformAnimator)
+                {
+                    _scriptableElement.style.visibility = Visibility.Visible;
+                    _scriptableElement.Q<Button>().clicked += LoadAnimation;
+                }
             }
-                
             else
+            {
                 _renderElement.Animator = null;
+                UnBindLoadButton();
+            }
+        }
+
+        private void UnBindLoadButton()
+        {
+            _scriptableElement.style.visibility = Visibility.Hidden;
+            _scriptableElement.Q<Button>().clicked -= LoadAnimation;
+        }
+
+        private void LoadAnimation()
+        {
+            var name = _scriptableElement.Q<TextField>().value;
+            var scriptableAnimator = _renderElement.Animator as ScriptableTransformAnimator;
+            if (scriptableAnimator != null || !string.IsNullOrEmpty(name))
+                scriptableAnimator.Play(name);
         }
 
         private void OnInspectorUpdate()

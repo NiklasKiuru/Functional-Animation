@@ -54,7 +54,17 @@ namespace Aikom.FunctionalAnimation
         public bool Animate { get => _animate; set => _animate = value; }
         public float TrimFront { get => _trimFront; protected set => _trimFront = value; }
         public float TrimBack { get => _trimBack; protected set => _trimBack = value; }
-        public TimeKeeper Timer { get => _timer; }
+        public TimeKeeper Timer 
+        {
+            get
+            {
+                if (_timer != null)
+                    return _timer;
+                else
+                    _timer = new TimeKeeper(1 / _duration, _timeControl);
+                    return _timer;
+            }
+        }
 
         /// <summary>
         /// Time control for the property animation
