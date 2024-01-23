@@ -1,5 +1,4 @@
 ﻿using Aikom.FunctionalAnimation.Extensions;
-using System;
 using Unity.Mathematics;
 using UnityEngine;
 
@@ -13,9 +12,9 @@ namespace Aikom.FunctionalAnimation
         [Tooltip("You can include or exclude separate axis from the animation")]
         public bool3 Axis = new bool3(true);
 
-        protected override Vector3 IncrimentValue(Vector3 startVal, float time, Func<float, float> easingFunc)
+        protected override Vector3 IncrimentValue(float time, Vector3 startval, Vector3 endVal)
         {
-            return UnityExtensions.InterpolateAxis(easingFunc, startVal, Target, Axis, time);
+            return UnityExtensions.InterpolateAxis(_easingFunc, startval, endVal, Axis, time);
         }
 
         internal void SetNewTarget(Vector3 target) => Target = target;

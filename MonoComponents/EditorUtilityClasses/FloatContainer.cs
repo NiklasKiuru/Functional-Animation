@@ -22,9 +22,9 @@ namespace Aikom.FunctionalAnimation
             return FunctionConstructor.Generate();
         }
 
-        protected override float IncrimentValue(float startVal, float time, Func<float, float> easingFunc)
+        protected override float IncrimentValue(float time, float start, float end)
         {
-            return EF.Interpolate(easingFunc, startVal, Target, time);
+            return EF.Interpolate(_easingFunc, start, end, time);
         }
     }
 }
