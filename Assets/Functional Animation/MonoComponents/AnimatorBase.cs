@@ -9,7 +9,7 @@ namespace Aikom.FunctionalAnimation
     /// Base class for all property animators
     /// </summary>
     /// <typeparam name="T"></typeparam>
-    public abstract class AnimatorBase<T> : MonoBehaviour where T : struct
+    public abstract class AnimatorBase<T> : MonoBehaviour where T : struct, IEquatable<T>
     {
         [Tooltip("If checked will sync the animation duration of all properties")]
         [SerializeField] private bool _syncAll;
@@ -23,7 +23,7 @@ namespace Aikom.FunctionalAnimation
         [Tooltip("Delay before the animation starts playing")]
         [SerializeField] private float _delay;
 
-        private TimeKeeper _timer;
+        private TimeKeeper _timer = new(0);
         private Action _animate;
 
         /// <summary>

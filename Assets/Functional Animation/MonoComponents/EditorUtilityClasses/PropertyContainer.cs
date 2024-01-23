@@ -1,10 +1,9 @@
 ﻿using System;
 using UnityEngine;
-using static UnityEngine.GraphicsBuffer;
 
 namespace Aikom.FunctionalAnimation
 {
-    public abstract class PropertyContainer<T> where T : struct
+    public abstract class PropertyContainer<T> where T : struct, IEquatable<T>
     {
         [Tooltip("Should this property be animated?")]
         [SerializeField] private bool _animate = true;
@@ -24,14 +23,15 @@ namespace Aikom.FunctionalAnimation
         [Tooltip("Target value to animate towards to")]
         [SerializeField] private T _target;
 
-        /// <summary>
-        /// Main function that sets the property value
-        /// </summary>
-        private Action<float> _setValue;
-
-        private TimeKeeper _timer;
+        // Sycronization variables
         private float _startTimeStamp;
         private float _endTimeStamp;
+
+        // Main interpolator
+        private Interpolator<T> _interpolator;
+
+        // Cached easing function
+        protected Func<float, float> _easingFunc;
 
         /// <summary>
         /// Invoked once the property value has changed
@@ -52,17 +52,30 @@ namespace Aikom.FunctionalAnimation
         /// Is this property animated
         /// </summary>
         public bool Animate { get => _animate; set => _animate = value; }
+
+        /// <summary>
+        /// The proportion of the animation that is not played from the beginning.
+        /// If played syncronously the full graph will be played in renormalized time relative to animators clock
+        /// </summary>
         public float TrimFront { get => _trimFront; protected set => _trimFront = value; }
+
+        /// <summary>
+        /// The proportion of the animation that is not played from the end.
+        /// If played syncronously the full graph will be played in renormalized time relative to animators clock
+        /// </summary>
         public float TrimBack { get => _trimBack; protected set => _trimBack = value; }
-        public TimeKeeper Timer 
+
+        /// <summary>
+        /// Current linear time [0, 1]
+        /// </summary>
+        public float Time 
         {
             get
             {
-                if (_timer != null)
-                    return _timer;
+                if (_interpolator == null)
+                    return 0;
                 else
-                    _timer = new TimeKeeper(1 / _duration, _timeControl);
-                    return _timer;
+                    return _interpolator.Timer.Time;
             }
         }
 
@@ -75,10 +88,7 @@ namespace Aikom.FunctionalAnimation
             set
             {
                 _timeControl = value;
-                if(_timer == null) 
-                    _timer = new TimeKeeper(1 / _duration, _timeControl);
-                else
-                    _timer.SetTimeControl(_timeControl);
+                _interpolator?.Timer.SetTimeControl(value);
             }
         }
 
@@ -91,10 +101,8 @@ namespace Aikom.FunctionalAnimation
             set
             {
                 _duration = value;
-                if (_timer == null)
-                    _timer = new TimeKeeper(1 / _duration, _timeControl);
-                else
-                    _timer.Speed = 1 / _duration;
+                if (_interpolator != null)
+                    _interpolator.Timer.Speed = 1 / _duration;
             }
         }
 
@@ -108,32 +116,24 @@ namespace Aikom.FunctionalAnimation
         /// </summary>
         public void Update()
         {
-            _setValue.Invoke(_timer.Tick());
+            _interpolator.Run();
         }
 
         /// <summary>
-        /// Updates the property value syncronously
+        /// Updates the property value syncronously in relation to animators clock
         /// </summary>
         /// <param name="time">The time given is in real time seconds</param>
         public void UpdateSync(float time)
         {
-
             if (time < _startTimeStamp)
-                _setValue.Invoke(0);
-            else if(time > _endTimeStamp)
-                _setValue.Invoke(1);
-
+                _interpolator.RunOffset(-1);
+            else if (time > _endTimeStamp)
+                _interpolator.RunOffset(1);
             else if(time >= _startTimeStamp && time <= _endTimeStamp)
             {   
-                // Since the real measured time is between the animateable time frame
-                // it has to be offset by some value below the current deltaTime
-                _timer.SetTime(time - _startTimeStamp);
-
-                // And once this offset has been applied the next tick will always be one frame ahead
-                // This value is always the current time delta hence we substrack it from the tick
-                _setValue.Invoke(_timer.Tick() - Time.deltaTime);
+                _interpolator.Timer.SetTime(time - _startTimeStamp);
+                _interpolator.RunOffset(-UnityEngine.Time.deltaTime);
             }
-                
         }
 
         /// <summary>
@@ -142,23 +142,22 @@ namespace Aikom.FunctionalAnimation
         /// <param name="startVal"></param>
         /// <param name="setValue"></param>
         public void CreateInterpolator(T startVal, Action<T> setValue)
-        {
-            var func = SetEasingFunction();
-            _timer = new TimeKeeper(1 / _duration, _timeControl);
-            _setValue = (t) =>
-            {   
-                var val = IncrimentValue(startVal, t, func);
-                setValue(val);
-                OnValueChanged?.Invoke(val);
-                if (_timer.Time == 0)
-                    OnStartReached?.Invoke(val);
-                if (_timer.Time >= 1)
-                {
-                    OnTargetReached?.Invoke(val);
-                    if(_timeControl == TimeControl.OneShot)
-                        _animate = false;
-                }
-            };
+        {   
+            // Disable event hooks
+            if(_interpolator != null)
+            {
+                _interpolator.OnStartReached -= OnStartReached;
+                _interpolator.OnTargetReached -= OnTargetReached;
+                _interpolator.OnValueChanged -= OnValueChanged;
+            }
+            
+            _easingFunc = SetEasingFunction();
+            _interpolator = new Interpolator<T>(IncrimentValue, setValue, 1 / _duration, startVal, _target,  _timeControl);
+
+            // Rebind event hooks
+            _interpolator.OnStartReached += OnStartReached;
+            _interpolator.OnTargetReached += OnTargetReached;
+            _interpolator.OnValueChanged += OnValueChanged;
         }
 
         /// <summary>
@@ -173,20 +172,19 @@ namespace Aikom.FunctionalAnimation
         }
 
         /// <summary>
-        /// Sets the easing function for the property animation
-        /// </summary>
-        /// <returns></returns>
-        protected abstract Func<float, float> SetEasingFunction();
-
-        /// <summary>
         /// The method defining how the property value is changed
         /// </summary>
         /// <param name="startVal"></param>
         /// <param name="time"></param>
         /// <param name="easingFunc"></param>
         /// <returns></returns>
-        protected abstract T IncrimentValue(T startVal, float time, Func<float, float> easingFunc);
+        protected abstract T IncrimentValue(float time, T start, T end);
 
+        /// <summary>
+        /// Cahces the easing function
+        /// </summary>
+        /// <returns></returns>
+        protected abstract Func<float, float> SetEasingFunction();
     }
 
     public enum EventType

@@ -4,193 +4,221 @@ using System.Collections;
 
 namespace Aikom.FunctionalAnimation
 {
-    public class Interpolator<T> where T : struct
-    {   
-        /// <summary>
-        /// Interpolation target. Should be used as a static target but can also be changed dynamically
-        /// </summary>
+    /// <summary>
+    /// Interpolator class that can store and control values independently
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    public class Interpolator<T> where T : struct, IEquatable<T>
+    {
+        // Private fields
         private T _target;
-
         private T _default;
-
-        /// <summary>
-        /// Main function used in interpolation
-        /// </summary>
-        private Func<float, T> _mainFunction;
-
-        private Action<T> _setVal;
-
-        /// <summary>
-        /// Flag that defines if the interpolator has an active routine looping
-        /// </summary>
         private bool _hasActiveRoutine;
-
-        /// <summary>
-        /// Current interpolation value
-        /// </summary>
         private T _currentValue;
-
         private TimeKeeper _timer;
 
         private static RoutineController _controllerInstance;
 
+        // Events
         public event Action<T> OnValueChanged;
         public event Action<T> OnTargetReached;
         public event Action<T> OnStartReached;
+        public event Action<T> OnRoutineFinished;
+        public event Action<T> OnRoutineStarted;
 
-        public float Speed { get => _timer.Speed; set => _timer.Speed = value; }
-        public T Target { get => _target; set => _target = value; }
-        public T Default { get => _default; set => _default = value; }
+        // Cached functions and actions
+        private Func<float, T> _mainFunction;
+        private Func<float, T, T, T> _subFunction;
+        private Action<T> _setVal;
+
+        public float Speed { get => _timer.Speed; }
+        public T Target { get => _target; }
+        public T Default { get => _default; }
         public T CurrentValue { get => _currentValue; }
         public float LinearTime { get => _timer.Time; }
-        public float Direction
-        {
-            get { return _timer.Direction; }
-        }
-
+        public float Direction { get { return _timer.Direction; } }
         public Func<float, T> Main { get => _mainFunction; }
+        internal TimeKeeper Timer { get => _timer; }
 
         /// <summary>
-        /// Constructor used to create Interpolator if generated from a script
+        /// Constructor
         /// </summary>
-        /// <param name="mainFunction"></param>
-        /// <param name="setVal"></param>
-        /// <param name="speed"></param>
+        /// <param name="interpolation">Handles the interpolation logic. Parameters in order: Time, Start, End</param>
+        /// <param name="setVal">Optional automatic value set action</param>
+        /// <param name="speed">Interpolation speed</param>
         /// <param name="target"></param>
         /// <param name="ctrl"></param>
-        public Interpolator(Func<float,T, T, T> mainFunction, Action<T> setVal, float speed, T target, T defaultValue, TimeControl ctrl = TimeControl.OneShot)
+        public Interpolator(Func<float, T, T, T> interpolation, Action<T> setVal, float speed, T start, T target, TimeControl ctrl = TimeControl.OneShot)
         {
             _setVal = setVal;
             _target = target;
-            _default = defaultValue;
+            _default = start;
+            _subFunction = interpolation;
 
-            _timer = new TimeKeeper(1 / speed, ctrl);
-            Action<float> main = (t) => 
-            {   
-                var val = mainFunction(t, defaultValue, target);
-                _setVal(val);
-                if(!_currentValue.Equals(val))
+            _timer = new TimeKeeper(speed, ctrl);
+            _mainFunction = (t) =>
+            {
+                var val = _subFunction(t, _default, _target);
+                if (!_currentValue.Equals(val))
                     OnValueChanged?.Invoke(val);
+                _currentValue = val;
+                _setVal(val);
                 if (_timer.Time <= 0)
                     OnStartReached?.Invoke(val);
                 if (_timer.Time >= 1)
                     OnTargetReached?.Invoke(val);
+                return val;
             };
         }
 
         /// <summary>
-        /// Overrides current main function. Override is only possible if no routines are running and given function cannot be null
+        /// Overrides currently set set value action
         /// </summary>
-        /// <param name="mainFunction"></param>
-        public void OverrideFunction(Func<float, T> mainFunction)
-        {   
-            if(mainFunction != null && !_hasActiveRoutine)
-                _mainFunction = mainFunction;
+        /// <param name="setVal"></param>
+        public void SetValueOverride(Action<T> setVal)
+        {
+            if (setVal != null && !_hasActiveRoutine)
+                _setVal = setVal;
         }
 
-        ///// <summary>
-        ///// Modulates the value with set parameters with constructed functionality
-        ///// This function should be called once every frame and will not get invoked if a routine is running
-        ///// </summary>
-        ///// <param name="value"></param>
-        //public float Animate(float value)
-        //{
-        //    if (!_hasActiveRoutine)
-        //    {
-        //        value = AnimateInternal();
-        //    }
-        //    return value;
-        //}
+        /// <summary>
+        /// Overrides current start and target values. Values cannot be overrdden while a routine is running
+        /// Resets the internal clock to 0
+        /// </summary>
+        /// <param name="start"></param>
+        /// <param name="end"></param>
+        public void OverrideValues(T start, T end)
+        {   
+            if(_hasActiveRoutine)
+                return;
+            _default = start;
+            _target = end;
+            _timer.Reset();
+        }
 
-        ///// <summary>
-        ///// Modulates the value with set parameters with constructed functionality
-        ///// </summary>
-        ///// <returns></returns>
-        //public float Animate()
-        //{
-        //    return AnimateInternal();
-        //}
+        /// <summary>
+        /// Overrides the current target value. Value cannot be overrdden while a routine is running
+        /// </summary>
+        /// <param name="newTarget"></param>
+        /// <param name="restart"></param>
+        public void OverrideTarget(T newTarget, bool restart = true)
+        {   
+            if(_hasActiveRoutine)
+                return;
+            _target = newTarget;
+            if (restart)
+                _timer.Reset();
+        }
 
-        ///// <summary>
-        ///// Samples the animation at a given linear time point between 0 and 1
-        ///// </summary>
-        ///// <param name="time"></param>
-        ///// <returns></returns>
-        //public float Sample(float time)
-        //{
-        //    return EF.Interpolate(_mainFunction, _default, _target, time);
-        //}
+        /// <summary>
+        /// Runs the interpolation with set parameters in delta time
+        /// </summary>
+        public void Run() => _mainFunction(_timer.Tick());
 
-        ///// <summary>
-        ///// Starts a coroutine animation to pingpong the animation once. Very useful for zoom in - out effects
-        ///// </summary>
-        ///// <param name="owner"></param>
-        ///// <param name="onYield"></param>
-        ///// <param name="turningCondition"></param>
-        //public void PingPongRountine(MonoBehaviour owner, Action<float> onYield, Func<bool> turningCondition)
-        //{
-        //    _direction = 1;
-        //    Action<float> terminate = (s) =>
-        //    {
-        //        if (s == _default)
-        //            StopRoutine();
-        //    };
+        /// <summary>
+        /// Runs the interpolation with set parameters in custom delta time
+        /// </summary>
+        /// <param name="delta"></param>
+        public void Run(float delta) => _mainFunction(_timer.Tick(delta));
 
-        //    if (_hasActiveRoutine)
-        //        StopRoutine();
-        //    owner.StartCoroutine(_activeRoutine.Numerator);
-        //}
+        /// <summary>
+        /// Runs the interpolation with set parameters in delta time + offset
+        /// </summary>
+        /// <param name="offset"></param>
+        public void RunOffset(float offset) => _mainFunction(_timer.Tick() + offset);
 
-        ///// <summary>
-        ///// Inverts the time direction of the animation
-        ///// </summary>
-        ///// <param name="invert">If true interpolates from target towards origin</param>
-        //public void InvertDirection(bool invert)
-        //{
-        //    _direction = invert ? -1 : 1;
-        //}
+        /// <summary>
+        /// Samples the interpolation result value at a given linear time point between 0 and 1
+        /// This never invokes set value action or events and never sets the current value and can be used while a routine is running
+        /// </summary>
+        /// <param name="time"></param>
+        /// <returns></returns>
+        public T Sample(float time) => _subFunction(time, _default, _target);
 
-        ///// <summary>
-        ///// Inverts the time direction of the animation
-        ///// </summary>
-        //public void InvertDirection()
-        //{
-        //    _direction *= -1;
-        //}
+        /// <summary>
+        /// Stops the current running routine if there is one
+        /// </summary>
+        public void StopRoutine()
+        {
+            _hasActiveRoutine = false;
+            OnRoutineFinished?.Invoke(_currentValue);
+        }
 
-        ///// <summary>
-        ///// Starts a coroutine animation
-        ///// </summary>
-        ///// <param name="owner"></param>
-        ///// <param name="value"></param>
-        ///// <param name="terminateOnCompletion">Whether the rountine should be automatically terminated upon completion</param>
-        //public void StartRoutine(MonoBehaviour owner, Action<float> onYield, bool terminateOnCompletion = true)
-        //{
-        //    if(!_hasActiveRoutine)
-        //        _time = _direction == -1 ? 1 : 0;
-        //    Action terminate = null;
-        //    if (terminateOnCompletion)
-        //    {
-        //        terminate = () =>
-        //        {
-        //            if ((_time >= 1 && _direction == 1) || (_time <= 0 && _direction == -1))
-        //                StopRoutine();
-        //        };
-        //    }
+        /// <summary>
+        /// Inverts the direction of time in the interpolator. Can only be used while no routine is running
+        /// </summary>
+        public void InvertDirection()
+        {
+            if (!_hasActiveRoutine)
+                _timer.InvertDirection();
+        }
+
+        /// <summary>
+        /// Resets the interpolator to its default value. Stops the current routine if there is one
+        /// </summary>
+        public void Reset()
+        {
+            _timer.Reset();
+            _mainFunction(0);
+            if(_hasActiveRoutine)
+                StopRoutine();
+        }
+
+        /// <summary>
+        /// Starts a coroutine to pingpong the value once
+        /// </summary>
+        /// <param name="owner"></param>
+        /// <param name="turningCondition">If no turning condition is given the default condition is met once the timer end position has been reached</param>
+        public void PingPongRoutine(MonoBehaviour owner, Func<bool> turningCondition = null)
+        {
+            if(_timer.Direction == -1)
+                _timer.InvertDirection();
+            turningCondition ??= () => _timer.Time >= 1;
             
-        //    if(_hasActiveRoutine)
-        //        StopRoutine();
-        //    owner.StartCoroutine(Animate(terminate, onYield));
-        //}
+            owner.StartCoroutine(Run(OnYield, terminate));
 
-        ///// <summary>
-        ///// Stops the current routine
-        ///// </summary>
-        //public void StopRoutine()
-        //{
-        //    _hasActiveRoutine = false;
-        //    OnRoutineFinished?.Invoke();
-        //}
+            void terminate(T s)
+            {
+                if (_timer.Time == 0)
+                    StopRoutine();
+            }
+            void OnYield() { if (turningCondition()) _timer.InvertDirection(); }
+        }
+
+        /// <summary>
+        /// Runs the interpolation once and terminates. Cannot be used while a routine is already running
+        /// </summary>
+        /// <param name="owner"></param>
+        /// <param name="customTerminationCondition">Terminates the routine prematurely if set</param>
+        public void StartRoutine(MonoBehaviour owner, Func<bool> customTerminationCondition = null)
+        {
+            if (_hasActiveRoutine)
+                return;
+            bool DefaultCondition() => (_timer.Time >= 1 && _timer.Direction == 1) || (_timer.Time <= 0 && _timer.Direction == -1);
+            customTerminationCondition ??= DefaultCondition;
+            void Terminate(T s) 
+            {
+                if (customTerminationCondition())
+                {
+                    StopRoutine();
+                    _timer.Reset();
+                }  
+            };
+            owner.StartCoroutine(Run(null, Terminate));
+        }
+
+        private IEnumerator Run(Action onYield, Action<T> terminate)
+        {   
+            OnRoutineStarted?.Invoke(_currentValue);
+            _hasActiveRoutine = true;
+            while(_hasActiveRoutine)
+            {
+                Run();
+                onYield?.Invoke();
+                terminate.Invoke(_currentValue);
+                yield return null;
+            }
+        }
 
         ///// <summary>
         ///// Starts a static instance routine
@@ -207,41 +235,6 @@ namespace Aikom.FunctionalAnimation
         //    }
 
         //    StartRoutine(_controllerInstance, onYield, terminateOnCompletion);
-        //}
-
-        //private IEnumerator Animate(Action onCompletion, Action<float> onYield)
-        //{
-        //    _hasActiveRoutine = true;
-        //    while (_hasActiveRoutine)
-        //    {   
-        //        float value = AnimateInternal();
-        //        onYield?.Invoke(value);
-        //        //Debug.Log(value);
-        //        onCompletion?.Invoke();
-        //        yield return null;
-        //    }
-        //}
-
-        //private IEnumerator AnimatePingPong(Action<float> onCompletion, Action<float> onYield, Func<bool> turningCondition)
-        //{
-        //    _hasActiveRoutine = true;
-        //    while (_hasActiveRoutine)
-        //    {
-        //        float value = AnimateInternal();
-        //        onYield?.Invoke(value);
-        //        if (turningCondition())
-        //            _direction = -1;
-        //        onCompletion.Invoke(value);
-        //        yield return null;
-        //    }
-        //}
-
-
-        //private float AnimateInternal()
-        //{
-        //    _timer.Tick();
-        //    _currentValue = EF.Interpolate(_mainFunction, _default, _target, _time);
-        //    return _currentValue;
         //}
     }
 }

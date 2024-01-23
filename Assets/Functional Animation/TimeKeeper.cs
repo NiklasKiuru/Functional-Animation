@@ -86,20 +86,14 @@ namespace Aikom.FunctionalAnimation
         /// Ticks the time by Unitys Time.deltaTime and returns the current time
         /// </summary>
         /// <returns></returns>
-        public float Tick()
-        {
-            return _controller.Invoke(UnityEngine.Time.deltaTime);
-        }
+        public float Tick() => _controller.Invoke(UnityEngine.Time.deltaTime);
 
         /// <summary>
         /// Ticks the time by a custom delta and returns the current time
         /// </summary>
         /// <param name="delta"></param>
         /// <returns></returns>
-        public float Tick(float delta)
-        {
-            return _controller.Invoke(delta);
-        }
+        public float Tick(float delta) => _controller.Invoke(delta);
 
         /// <summary>
         /// Sets the time as in real time seconds
@@ -114,38 +108,26 @@ namespace Aikom.FunctionalAnimation
         /// <summary>
         /// Resets the time to 0
         /// </summary>
-        public void Reset()
-        {
-            _time = 0;
-        }
+        public void Reset() => _time = 0;
 
         /// <summary>
         /// Inverts the direction of time
         /// </summary>
-        public void InvertDirection()
-        {
-            _direction *= -1;
-        }
+        public void InvertDirection() => _direction *= -1;
 
         /// <summary>
         /// Pauses the timer
         /// </summary>
-        public void Pause()
-        {
-            _controller = (d) => { return _time; };
-        }
+        public void Pause() => _controller = (d) => { return _time; };
 
         /// <summary>
         /// Continues the timer if the timer was paused
         /// </summary>
-        public void Continue()
-        {
-            SetTimeControl(_timeControl);
-        }
+        public void Continue() => SetTimeControl(_timeControl);
 
         private float Forward(float delta)
         {
-            _time += _speed * UnityEngine.Time.deltaTime * _direction;
+            _time += _speed * delta * _direction;
             _time = Mathf.Clamp01(_time);
             return _time;
         }
