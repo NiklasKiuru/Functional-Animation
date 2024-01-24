@@ -3,6 +3,7 @@ using UnityEditor;
 using UnityEngine.UIElements;
 using System;
 using UnityEditor.UIElements;
+using System.Linq;
 
 namespace Aikom.FunctionalAnimation.Editor
 {
@@ -12,10 +13,10 @@ namespace Aikom.FunctionalAnimation.Editor
     /// </summary>
     internal class GraphWindow : EditorWindow
     {
-        private RenderElement _renderElement;
+        private GraphRenderElement _renderElement;
         private Action _unregisterCbs;
-        private FloatField[] _normalTimeValues;
-        private FloatField[] _accelerationValues;
+        private TextField[] _normalTimeValues = new TextField[3];
+        private TextField[] _accelerationValues = new TextField[3];
         private VisualElement _scriptableElement;
 
         [MenuItem("Window/Functional Animation")]
@@ -33,7 +34,7 @@ namespace Aikom.FunctionalAnimation.Editor
 
             // Render element
             var material = AssetDatabase.LoadAssetAtPath<Material>("Assets/UI/GraphMaterial.mat");
-            _renderElement = new RenderElement(material, root);
+            _renderElement = new GraphRenderElement(material);
             _renderElement.style.width = new StyleLength(new Length(80f, LengthUnit.Percent));
             _renderElement.style.height = new StyleLength(new Length(80f, LengthUnit.Percent));
             _renderElement.style.backgroundColor = new StyleColor(new Color(0.2f, 0.2f, 0.2f));
@@ -69,7 +70,7 @@ namespace Aikom.FunctionalAnimation.Editor
 
             var gridLineAmountSlider = new SliderInt("Grid line count")
             {
-                highValue = RenderElement.MaxGridLines,
+                highValue = GraphRenderElement.MaxGridLines,
                 lowValue = 5,
                 value = _renderElement.GridLines,
                 showInputField = true
@@ -81,60 +82,42 @@ namespace Aikom.FunctionalAnimation.Editor
             animatorHeader.style.marginBottom = new StyleLength(new Length(5f, LengthUnit.Pixel));
             animatorHeader.style.marginTop = new StyleLength(new Length(10f, LengthUnit.Pixel));
 
+            var headerContainer = new VisualElement();
+            headerContainer.style.flexDirection = FlexDirection.Row;
+            headerContainer.style.width = new StyleLength(new Length(100f, LengthUnit.Percent));
+            var dummyContainer = new VisualElement();
+            dummyContainer.style.minWidth = new StyleLength(new Length(153f, LengthUnit.Pixel));
+            headerContainer.Add(dummyContainer);
+
+            var headerLabelContainer = new VisualElement();
+            headerLabelContainer.style.flexDirection = FlexDirection.Row;
+            headerLabelContainer.style.flexGrow = 1;
+            headerContainer.Add(headerLabelContainer);
+
             var timeHeader = new Label("Time");
             timeHeader.style.fontSize = 12;
             timeHeader.style.marginBottom = new StyleLength(new Length(5f, LengthUnit.Pixel));
-            timeHeader.style.marginTop = new StyleLength(new Length(10f, LengthUnit.Pixel));
+            timeHeader.style.marginTop = new StyleLength(new Length(5f, LengthUnit.Pixel));
             timeHeader.style.unityTextAlign = TextAnchor.MiddleLeft;
-            timeHeader.style.paddingLeft = new StyleLength(new Length(156f, LengthUnit.Pixel));
+            timeHeader.style.width = new StyleLength(new Length(50f, LengthUnit.Percent));
+            timeHeader.style.marginLeft = new StyleLength(new Length(3f, LengthUnit.Pixel));
+            timeHeader.style.marginRight = new StyleLength(new Length(3f, LengthUnit.Pixel));
 
-            var positionInfoContainer = new VisualElement();
-            positionInfoContainer.AddToClassList("unity-base-field");
-            var posLabel = new Label("Position");
-            posLabel.AddToClassList("unity-float-field__label");
-            posLabel.style.minWidth = new StyleLength(new Length(150f, LengthUnit.Pixel));
-            positionInfoContainer.style.flexDirection = FlexDirection.Row;
-            positionInfoContainer.style.width = new StyleLength(new Length(100f, LengthUnit.Percent));
-            var positionTime = new FloatField();
-            positionTime.style.flexGrow = 1;
-            var positionAcc = new FloatField();
-            positionAcc.style.flexGrow = 1;
-            positionInfoContainer.Add(posLabel);
-            positionInfoContainer.Add(positionTime);
-            positionInfoContainer.Add(positionAcc);
+            var accelerationHeader = new Label("Acceleration");
+            accelerationHeader.style.unityTextAlign = TextAnchor.MiddleLeft;
+            accelerationHeader.style.fontSize = 12;
+            accelerationHeader.style.marginBottom = new StyleLength(new Length(5f, LengthUnit.Pixel));
+            accelerationHeader.style.marginTop = new StyleLength(new Length(5f, LengthUnit.Pixel));
+            accelerationHeader.style.width = new StyleLength(new Length(50f, LengthUnit.Percent));
+            accelerationHeader.style.marginLeft = new StyleLength(new Length(3f, LengthUnit.Pixel));
+            accelerationHeader.style.marginRight = new StyleLength(new Length(3f, LengthUnit.Pixel));
 
-            var rotationInfoContainer = new VisualElement();
-            rotationInfoContainer.AddToClassList("unity-base-field");
-            var rotLabel = new Label("Rotation");
-            rotLabel.AddToClassList("unity-float-field__label");
-            rotLabel.style.minWidth = new StyleLength(new Length(150f, LengthUnit.Pixel));
-            rotationInfoContainer.style.flexDirection = FlexDirection.Row;
-            rotationInfoContainer.style.width = new StyleLength(new Length(100f, LengthUnit.Percent));
-            var rotationTime = new FloatField();
-            rotationTime.style.flexGrow = 1;
-            var rotationAcc = new FloatField();
-            rotationAcc.style.flexGrow = 1;
-            rotationInfoContainer.Add(rotLabel);
-            rotationInfoContainer.Add(rotationTime);
-            rotationInfoContainer.Add(rotationAcc);
+            headerLabelContainer.Add(timeHeader);
+            headerLabelContainer.Add(accelerationHeader);
 
-            var scaleInfoContainer = new VisualElement();
-            scaleInfoContainer.AddToClassList("unity-base-field");
-            var scaleLabel = new Label("Scale");
-            scaleLabel.AddToClassList("unity-float-field__label");
-            scaleLabel.style.minWidth = new StyleLength(new Length(150f, LengthUnit.Pixel));
-            scaleInfoContainer.style.flexDirection = FlexDirection.Row;
-            scaleInfoContainer.style.width = new StyleLength(new Length(100f, LengthUnit.Percent));
-            var scaleTime = new FloatField();
-            scaleTime.style.flexGrow = 1;
-            var scaleAcc = new FloatField();
-            scaleAcc.style.flexGrow = 1;
-            scaleInfoContainer.Add(scaleLabel);
-            scaleInfoContainer.Add(scaleTime);
-            scaleInfoContainer.Add(scaleAcc);
-
-            _normalTimeValues = new FloatField[3] { positionTime, rotationTime, scaleTime };
-            _accelerationValues = new FloatField[3] { positionAcc, rotationAcc, scaleAcc };
+            var positionInfoContainer = CreatePropertyFields("Position", 0);
+            var rotationInfoContainer = CreatePropertyFields("Rotation", 1);
+            var scaleInfoContainer = CreatePropertyFields("Scale", 2);
 
             // Custom element for scriptable animator
             _scriptableElement = new VisualElement();
@@ -146,7 +129,6 @@ namespace Aikom.FunctionalAnimation.Editor
             scriptableHeader.style.marginBottom = new StyleLength(new Length(5f, LengthUnit.Pixel));
             scriptableHeader.style.marginTop = new StyleLength(new Length(10f, LengthUnit.Pixel));
             scriptableHeader.style.unityTextAlign = TextAnchor.MiddleLeft;
-            scriptableHeader.style.paddingLeft = new StyleLength(new Length(152f, LengthUnit.Pixel));
 
             var animationNameField = new TextField{ label = "Animation name" };
             var button = new Button { text = "Load" };
@@ -162,7 +144,7 @@ namespace Aikom.FunctionalAnimation.Editor
             sideBar.Add(graphVertexCountSlider);
             sideBar.Add(gridLineAmountSlider);
             sideBar.Add(animatorHeader);
-            sideBar.Add(timeHeader);
+            sideBar.Add(headerContainer);
             sideBar.Add(positionInfoContainer);
             sideBar.Add(rotationInfoContainer);
             sideBar.Add(scaleInfoContainer);
@@ -189,6 +171,39 @@ namespace Aikom.FunctionalAnimation.Editor
                 graphVertexCountSlider.UnregisterValueChangedCallback(ChangeVertexCount);
                 gridLineAmountSlider.UnregisterValueChangedCallback(ChangeGridLineCount);
                 UnBindLoadButton();
+            }
+
+            VisualElement CreatePropertyFields(string label, int index)
+            {
+                var infoContainer = new VisualElement();
+                infoContainer.AddToClassList("unity-base-field");
+                infoContainer.style.flexDirection = FlexDirection.Row;
+                infoContainer.style.width = new StyleLength(new Length(100f, LengthUnit.Percent));
+
+                var propertyLabel = new Label(label);
+                propertyLabel.AddToClassList("unity-float-field__label");
+                propertyLabel.style.minWidth = new StyleLength(new Length(150f, LengthUnit.Pixel));
+                
+
+                var dummy = new VisualElement();
+                dummy.style.flexGrow = 1;
+                dummy.style.flexDirection = FlexDirection.Row;
+                dummy.style.marginRight = new StyleLength(new Length(2f, LengthUnit.Pixel));
+
+                var time = new TextField();
+                time.style.width = new StyleLength(new Length(50f, LengthUnit.Percent));
+
+                var acceleration = new TextField();
+                acceleration.style.width = new StyleLength(new Length(50f, LengthUnit.Percent));
+
+                dummy.Add(time);
+                dummy.Add(acceleration);
+                infoContainer.Add(propertyLabel);
+                infoContainer.Add(dummy);
+
+                _accelerationValues[index] = acceleration;
+                _normalTimeValues[index] = time;
+                return infoContainer;
             }
         }
 
@@ -235,17 +250,29 @@ namespace Aikom.FunctionalAnimation.Editor
         {
             if(_renderElement.Animator != null && !Application.isPlaying)
                 Repaint();
+            else if(_renderElement.Animator != null && Application.isPlaying)
+            {
+                for (int i = 0; i < 3; i++)
+                {
+                    var container = _renderElement.Animator.Container[i];
+                    if (container != null)
+                    {   
+                        var time = container.Time;
+                        _normalTimeValues[i].value = time.ToString("F2");
+                        _accelerationValues[i].value = (MathUtils.Derivate(container.EasingFunc, 
+                            time, _renderElement.MeasurementInterval) * container.Direction).ToString("F2");
+                    }
+
+                }
+            }
+                
         }
 
         private void Update()
         {
             if (Application.isPlaying && _renderElement.Animator != null)
             {   
-                for(int i = 0; i < 3; i++)
-                {
-                    if (_renderElement.Animator.Container[i] != null)
-                        _normalTimeValues[i].value = _renderElement.Animator.Container[i].Time;
-                }
+                // This is for playhead update mainly
                 _renderElement.DrawGraph();
                 Repaint();
             }   
@@ -255,7 +282,7 @@ namespace Aikom.FunctionalAnimation.Editor
         /// Visual element that draws the animation graph
         /// Drawing is currently done by using GL calls and I might update this in the future to use the UIElements Mesh API instead for more flexibility
         /// </summary>
-        private class RenderElement : ImmediateModeElement
+        private class GraphRenderElement : ImmediateModeElement
         {
             private const int c_maxGridLines = 20;
 
@@ -265,34 +292,64 @@ namespace Aikom.FunctionalAnimation.Editor
             private Label[] _gridMarkers = new Label[c_maxGridLines];
             private Label[] _gridTimeMarkers = new Label[c_maxGridLines];
             private int _currentMarkers = 0;
+            private float _measurementInterval;
 
             public static int MaxGridLines { get => c_maxGridLines; }
             public TransformAnimator Animator { get; set; }
             public int SampleAmount { get => _sampleAmount; set => _sampleAmount = value; }
             public int GridLines { get => _gridLines; set => _gridLines = value; }
+            public float MeasurementInterval { get => _measurementInterval; }
 
-            public RenderElement(Material lineMaterial, VisualElement root)
+            public GraphRenderElement(Material lineMaterial)
             {
                 _graphMaterial = lineMaterial;
                 for(int i = 0; i < c_maxGridLines; i++)
                 {
-                    _gridMarkers[i] = new Label();
-                    _gridMarkers[i].style.unityTextAlign = TextAnchor.MiddleCenter;
-                    _gridMarkers[i].style.visibility = Visibility.Hidden;
-                    _gridMarkers[i].style.flexGrow = 0;
-                    _gridMarkers[i].style.width = new StyleLength(new Length(20f, LengthUnit.Pixel));
-                    _gridMarkers[i].style.height = new StyleLength(new Length(20f, LengthUnit.Pixel));
-                    _gridMarkers[i].style.position = Position.Absolute;
-                    _gridTimeMarkers[i] = new Label();
-                    _gridTimeMarkers[i].style.unityTextAlign = TextAnchor.MiddleCenter;
-                    _gridTimeMarkers[i].style.visibility = Visibility.Hidden;
-                    _gridTimeMarkers[i].style.flexGrow = 0;
-                    _gridTimeMarkers[i].style.width = new StyleLength(new Length(20f, LengthUnit.Pixel));
-                    _gridTimeMarkers[i].style.height = new StyleLength(new Length(20f, LengthUnit.Pixel));
-                    _gridTimeMarkers[i].style.position = Position.Absolute;
+                    Add(_gridMarkers[i] = CreateLabel());
+                    Add(_gridTimeMarkers[i] = CreateLabel());
+                }
 
-                    Add(_gridMarkers[i]);
-                    Add(_gridTimeMarkers[i]);
+                static Label CreateLabel()
+                {
+                    var label = new Label();
+                    label.style.unityTextAlign = TextAnchor.MiddleCenter;
+                    label.style.visibility = Visibility.Hidden;
+                    label.style.flexGrow = 0;
+                    label.style.width = new StyleLength(new Length(20f, LengthUnit.Pixel));
+                    label.style.height = new StyleLength(new Length(20f, LengthUnit.Pixel));
+                    label.style.position = Position.Absolute;
+                    return label;
+                }
+
+                var mainContainer = new VisualElement();
+                mainContainer.style.marginTop = new StyleLength(new Length(30f, LengthUnit.Pixel));
+                mainContainer.style.marginLeft = new StyleLength(new Length(5f, LengthUnit.Pixel));
+                Add(mainContainer);
+
+                CreateLegend("Postion", Color.red);
+                CreateLegend("Rotation", Color.blue);
+                CreateLegend("Scale", Color.green);
+
+                void CreateLegend(string name, Color legendColor)
+                {
+                    var legContainer = new VisualElement();
+                    legContainer.style.flexDirection = FlexDirection.Row;
+                    legContainer.style.marginBottom = new StyleLength(new Length(2f, LengthUnit.Pixel));
+                    legContainer.style.marginTop = new StyleLength(new Length(2f, LengthUnit.Pixel));
+                    legContainer.style.alignItems = Align.Center;
+
+                    var colorContainer = new VisualElement();
+                    colorContainer.style.backgroundColor = new StyleColor(legendColor);
+                    colorContainer.style.width = new StyleLength(new Length(10f, LengthUnit.Pixel));
+                    colorContainer.style.height = new StyleLength(new Length(10f, LengthUnit.Pixel));
+
+                    var label = new Label(name);
+                    label.style.unityTextAlign = TextAnchor.MiddleLeft;
+                    label.style.marginLeft = new StyleLength(new Length(3f, LengthUnit.Pixel));
+
+                    legContainer.Add(colorContainer);
+                    legContainer.Add(label);
+                    mainContainer.Add(legContainer);
                 }
             }
 
@@ -306,6 +363,12 @@ namespace Aikom.FunctionalAnimation.Editor
                 if (Animator == null)
                     return;
                 
+                // **TEST**
+                //var methodInfo = Animator.GetType().GetMethods().Where(p => Attribute.IsDefined(p, typeof(GraphMethodAttribute))).FirstOrDefault();
+                //var attr = methodInfo.GetCustomAttributes(typeof(GraphMethodAttribute), false).FirstOrDefault();
+                //var name = (attr as GraphMethodAttribute).name;
+                //methodInfo.Invoke(Animator, new object[] { name });
+               
                 // Begin draw call
                 GL.PushMatrix();
                 _graphMaterial.SetPass(0);
@@ -316,9 +379,10 @@ namespace Aikom.FunctionalAnimation.Editor
                 // just eyeballed to get them to look right. Should still look relatively good when
                 // resizing the window
                 GL.Color(new Color(1,1,1,0.2f));
+                var interval = 1f / _gridLines;
                 for(int j = 1; j <= _gridLines; j++)
                 {
-                    float x = j * (1f / _gridLines);
+                    float x = j * interval;
 
                     // X-axis
                     DrawVertex(x, 0);
@@ -356,6 +420,7 @@ namespace Aikom.FunctionalAnimation.Editor
                         continue;
                     var func = container.FunctionConstructor.Generate();
                     float sampleInc = 1f / _sampleAmount;
+                    _measurementInterval = sampleInc;
 
                     // Unsyncronized time control
                     if (!Animator.SyncAll)

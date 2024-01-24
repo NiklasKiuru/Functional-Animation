@@ -16,13 +16,13 @@ namespace Aikom.FunctionalAnimation
         [Tooltip("Target callback event")]
         public UnityEvent<float> OnValueChangedEvent = new();
 
-        protected override Func<float, float> SetEasingFunction()
+        protected override Func<float, float> GenerateEasingFunction()
         {
             FunctionConstructor ??= new FunctionConstructor();
             return FunctionConstructor.Generate();
         }
 
-        protected override float IncrimentValue(float time, float start, float end)
+        internal override float IncrimentValue(float time, float start, float end)
         {
             return EF.Interpolate(_easingFunc, start, end, time);
         }

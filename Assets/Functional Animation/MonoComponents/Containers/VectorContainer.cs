@@ -26,7 +26,7 @@ namespace Aikom.FunctionalAnimation
             return copy;
         }
 
-        protected override Func<float, float> SetEasingFunction()
+        protected override Func<float, float> GenerateEasingFunction()
         {
             FunctionConstructor ??= new FunctionConstructor();
             return FunctionConstructor.Generate();

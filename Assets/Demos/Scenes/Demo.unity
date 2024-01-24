@@ -539,15 +539,15 @@ MonoBehaviour:
       _duration: 3
       _trimFront: 0
       _trimBack: 1
-      _target: {x: 1, y: 1, z: 1}
-      Offset: {x: 0, y: 0, z: 0}
+      _target: {x: 2, y: 2, z: 2}
+      Offset: {x: 1, y: 1, z: 1}
       Axis:
         x: 1
         y: 1
         z: 1
       FunctionConstructor:
         _functions:
-        - _function: 0
+        - _function: 2
           _invert: 0
 --- !u!1 &705507993
 GameObject:
