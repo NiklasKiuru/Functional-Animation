@@ -36,7 +36,7 @@ namespace Aikom.FunctionalAnimation
         public T Default { get => _default; }
         public T CurrentValue { get => _currentValue; }
         public float LinearTime { get => _timer.Time; }
-        public float Direction { get { return _timer.Direction; } }
+        public int Direction { get { return _timer.Direction; } }
         public Func<float, T> Main { get => _mainFunction; }
         internal TimeKeeper Timer { get => _timer; }
 
@@ -62,7 +62,7 @@ namespace Aikom.FunctionalAnimation
                 if (!_currentValue.Equals(val))
                     OnValueChanged?.Invoke(val);
                 _currentValue = val;
-                _setVal(val);
+                _setVal?.Invoke(val);
                 if (_timer.Time <= 0)
                     OnStartReached?.Invoke(val);
                 if (_timer.Time >= 1)

@@ -12,7 +12,7 @@ namespace Aikom.FunctionalAnimation
         [Tooltip("You can include or exclude separate axis from the animation")]
         public bool3 Axis = new bool3(true);
 
-        protected override Vector3 IncrimentValue(float time, Vector3 startval, Vector3 endVal)
+        internal override Vector3 IncrimentValue(float time, Vector3 startval, Vector3 endVal)
         {
             return UnityExtensions.InterpolateAxis(_easingFunc, startval, endVal, Axis, time);
         }

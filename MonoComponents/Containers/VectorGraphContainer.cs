@@ -9,6 +9,6 @@ namespace Aikom.FunctionalAnimation
         [Tooltip("Curve that describes the fluidity of the change in property value")]
         public AnimationCurve Curve;
 
-        protected override Func<float, float> SetEasingFunction() => Curve.Evaluate;
+        protected override Func<float, float> GenerateEasingFunction() => Curve.Evaluate;
     }
 }

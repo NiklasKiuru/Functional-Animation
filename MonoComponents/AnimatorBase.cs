@@ -151,6 +151,12 @@ namespace Aikom.FunctionalAnimation
             enabled = activeTargets > 0;
         }
 
+        [GraphMethod("Test")]
+        public void Test(string name)
+        {
+            Debug.Log(name);
+        }
+
         /// <summary>
         /// Registers a callback to a property container event in stored index
         /// </summary>

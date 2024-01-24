@@ -110,6 +110,30 @@ namespace Aikom.FunctionalAnimation
         /// Target value to animate towards to
         /// </summary>
         public T Target { get => _target; protected set => _target = value; }
+        public Func<float, float> EasingFunc { get => _easingFunc; }
+        public int Direction 
+        { 
+            get 
+            {
+                if(_interpolator == null)
+                    return 1;
+                return _interpolator.Direction; 
+            } 
+        }
+
+        public PropertyContainer()
+        {
+            _easingFunc = GenerateEasingFunction();
+        }
+
+        public PropertyContainer(T start, T target, float duration, Action<T> setVal, TimeControl timeControl = TimeControl.OneShot)
+        {
+            _target = target;
+            _duration = duration;
+            _timeControl = timeControl;
+            _easingFunc = GenerateEasingFunction();
+            CreateInterpolator(start, setVal);
+        }
 
         /// <summary>
         /// Updates the property value
@@ -150,8 +174,8 @@ namespace Aikom.FunctionalAnimation
                 _interpolator.OnTargetReached -= OnTargetReached;
                 _interpolator.OnValueChanged -= OnValueChanged;
             }
-            
-            _easingFunc = SetEasingFunction();
+            OnInitialize(startVal);
+            _easingFunc = GenerateEasingFunction();
             _interpolator = new Interpolator<T>(IncrimentValue, setValue, 1 / _duration, startVal, _target,  _timeControl);
 
             // Rebind event hooks
@@ -178,13 +202,18 @@ namespace Aikom.FunctionalAnimation
         /// <param name="time"></param>
         /// <param name="easingFunc"></param>
         /// <returns></returns>
-        protected abstract T IncrimentValue(float time, T start, T end);
+        internal abstract T IncrimentValue(float time, T start, T end);
 
         /// <summary>
-        /// Cahces the easing function
+        /// Caches the easing function
         /// </summary>
         /// <returns></returns>
-        protected abstract Func<float, float> SetEasingFunction();
+        protected abstract Func<float, float> GenerateEasingFunction();
+
+        protected virtual void OnInitialize(T start)
+        {
+
+        }
     }
 
     public enum EventType
