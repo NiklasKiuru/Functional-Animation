@@ -14,6 +14,9 @@ namespace Aikom.FunctionalAnimation.UI
         private int _currentAxis;
 
         public Axis CurrentAxis { get => (Axis)_currentAxis; }
+        public IIndexable<GraphData> Source { get => _source; }
+
+        public event Action<Axis> CurrentAxisChanged;
 
         public GraphDebugWindow(IIndexable<GraphData> source, Enum usedType, int defaultIndex)
         {   
@@ -34,6 +37,7 @@ namespace Aikom.FunctionalAnimation.UI
                 var field = new FunctionSelectionField(i.ToString(), usedType);
                 field.value = source[defaultIndex].Functions[i];
                 field.Index = i;
+                field.Parent = this;
                 _fields.Add(field);
                 Add(field);
             }
@@ -47,6 +51,7 @@ namespace Aikom.FunctionalAnimation.UI
         public void UpdateWindow(ChangeEvent<Enum> evt)
         {
             _currentAxis = (int)(Axis)evt.newValue;
+            CurrentAxisChanged?.Invoke(CurrentAxis);
             Refresh();
         }
 
@@ -55,6 +60,7 @@ namespace Aikom.FunctionalAnimation.UI
             foreach (var field in _fields)
             {
                 field.UnregisterValueChangedCallback(OnValueChanged);
+                field.RemoveButton.clicked -= field.OnRemoveButtonClicked;
             }
         }
 
@@ -93,18 +99,34 @@ namespace Aikom.FunctionalAnimation.UI
             {
                 var field = new FunctionSelectionField(i.ToString(), _source[_currentAxis].Functions[i]);
                 field.Index = i;
+                field.Parent = this;
                 _fields.Add(field);
                 Add(field);
             }
             RegisterCallBacks();
         }
 
-        private class FunctionSelectionField : EnumField
+        public class FunctionSelectionField : EnumField
         {   
             public int Index { get; set; }
+            public Button RemoveButton { get; private set; }
+            public GraphDebugWindow Parent { get; set; }
+
+            public static event Action<Axis> OnFunctionRemovedInUI;
 
             public FunctionSelectionField(string label, Enum defaultValue) : base(label, defaultValue)
+            {   
+                style.flexDirection = FlexDirection.Row;
+                RemoveButton = new Button(OnRemoveButtonClicked);
+                RemoveButton.text = "Remove";
+                Add(RemoveButton);
+            }
+
+            public void OnRemoveButtonClicked()
             {
+                Parent.Source[(int)Parent.CurrentAxis].RemoveFunction(Index);
+                OnFunctionRemovedInUI?.Invoke(Parent.CurrentAxis);
+                Parent.Refresh();
             }
         }
     }
