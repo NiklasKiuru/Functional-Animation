@@ -1,3 +1,4 @@
+using PlasticGui.WorkspaceWindow.PendingChanges;
 using System;
 using UnityEngine;
 
@@ -130,8 +131,8 @@ namespace Aikom.FunctionalAnimation
         /// <returns>If the output is used as a function in interpolation it should be noted that the time parameter in this function works as t/n where n is the amount of input functions</returns>
         public static Func<float, float> Combine(params Function[] functions)
         {
-            if (functions == null || functions.Length < 2)
-                throw new ArgumentException("The input array cannot be null and must contain atleast 2 members");
+            if (functions == null || functions.Length == 0)
+                throw new ArgumentException("The input array cannot be null and must contain atleast 1 member");
 
             var funcs = new Func<float, float>[functions.Length];
             for (int i = 0; i < functions.Length; i++)
@@ -150,8 +151,8 @@ namespace Aikom.FunctionalAnimation
         /// <exception cref="ArgumentException"></exception>
         public static Func<float, float> Combine(params Func<float, float>[] functions)
         {
-            if (functions == null || functions.Length < 2)
-                throw new ArgumentException("The input array cannot be null and must contain atleast 2 members");
+            if (functions == null || functions.Length == 0)
+                throw new ArgumentException("The input array cannot be null and must contain atleast 1 member");
 
             return f => {
                 float count = functions.Length;

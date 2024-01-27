@@ -29,7 +29,7 @@ namespace Aikom.FunctionalAnimation
         protected override Func<float, float> GenerateEasingFunction()
         {
             FunctionConstructor ??= new FunctionConstructor();
-            return FunctionConstructor.Generate();
+            return FunctionConstructor.GenerateComplex();
         }
     }
 }
