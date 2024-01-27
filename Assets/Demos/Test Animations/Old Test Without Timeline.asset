@@ -1,0 +1,180 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b1417811ba15d2346a8ec491a6fe7450, type: 3}
+  m_Name: Old Test Without Timeline
+  m_EditorClassIdentifier: 
+  _animationData:
+  - X:
+    - Function: 4
+      StartingValue: 0
+      EndingValue: 1
+      StartingPoint: 0
+      EndingPoint: 1
+      Index: 0
+    Y:
+    - Function: 16
+      StartingValue: 0.2
+      EndingValue: 0
+      StartingPoint: 0
+      EndingPoint: 0.1
+      Index: 0
+    - Function: 14
+      StartingValue: 0
+      EndingValue: 0.5
+      StartingPoint: 0.1
+      EndingPoint: 0.2
+      Index: 0
+    - Function: 5
+      StartingValue: 0.5
+      EndingValue: 1
+      StartingPoint: 0.2
+      EndingPoint: 0.4
+      Index: 0
+    - Function: 6
+      StartingValue: 1
+      EndingValue: 1
+      StartingPoint: 0.4
+      EndingPoint: 0.5
+      Index: 0
+    - Function: 0
+      StartingValue: 1
+      EndingValue: 1
+      StartingPoint: 0.5
+      EndingPoint: 0.6
+      Index: 1
+    - Function: 11
+      StartingValue: 1
+      EndingValue: 0.5
+      StartingPoint: 0.6
+      EndingPoint: 1
+      Index: 1
+    Z:
+    - Function: 6
+      StartingValue: 0
+      EndingValue: 1
+      StartingPoint: 0
+      EndingPoint: 1
+      Index: 0
+    W:
+    - Function: 0
+      StartingValue: 0
+      EndingValue: 0
+      StartingPoint: 0
+      EndingPoint: 0
+      Index: 0
+    Target: {x: 0, y: 0, z: 0}
+    Offset: {x: 0, y: 0, z: 0}
+    Animate: 0
+    Sync: 0
+    SeparateAxis: 0
+    Duration: 0
+    TimeControl: 0
+    AnimateableAxis:
+      x: 0
+      y: 0
+      z: 0
+  - X:
+    - Function: 18
+      StartingValue: 0
+      EndingValue: 1
+      StartingPoint: 0
+      EndingPoint: 0.5
+      Index: 0
+    - Function: 0
+      StartingValue: 1
+      EndingValue: 1
+      StartingPoint: 0.5
+      EndingPoint: 1
+      Index: 0
+    Y:
+    - Function: 17
+      StartingValue: 0
+      EndingValue: 1
+      StartingPoint: 0
+      EndingPoint: 1
+      Index: 0
+    Z:
+    - Function: 6
+      StartingValue: 0
+      EndingValue: 1
+      StartingPoint: 0
+      EndingPoint: 1
+      Index: 0
+    W:
+    - Function: 0
+      StartingValue: 0
+      EndingValue: 0
+      StartingPoint: 0
+      EndingPoint: 0
+      Index: 0
+    Target: {x: 0, y: 0, z: 0}
+    Offset: {x: 0, y: 0, z: 0}
+    Animate: 0
+    Sync: 0
+    SeparateAxis: 0
+    Duration: 0
+    TimeControl: 0
+    AnimateableAxis:
+      x: 0
+      y: 0
+      z: 0
+  - X:
+    - Function: 13
+      StartingValue: 0
+      EndingValue: 1
+      StartingPoint: 0
+      EndingPoint: 1
+      Index: 0
+    - Function: 1
+      StartingValue: 0
+      EndingValue: 1
+      StartingPoint: 0
+      EndingPoint: 1
+      Index: 0
+    - Function: 1
+      StartingValue: 0
+      EndingValue: 1
+      StartingPoint: 0
+      EndingPoint: 1
+      Index: 0
+    Y:
+    - Function: 10
+      StartingValue: 0
+      EndingValue: 1
+      StartingPoint: 0
+      EndingPoint: 1
+      Index: 0
+    Z:
+    - Function: 6
+      StartingValue: 0
+      EndingValue: 1
+      StartingPoint: 0
+      EndingPoint: 1
+      Index: 0
+    W:
+    - Function: 0
+      StartingValue: 0
+      EndingValue: 0
+      StartingPoint: 0
+      EndingPoint: 0
+      Index: 0
+    Target: {x: 0, y: 0, z: 0}
+    Offset: {x: 0, y: 0, z: 0}
+    Animate: 0
+    Sync: 0
+    SeparateAxis: 0
+    Duration: 0
+    TimeControl: 0
+    AnimateableAxis:
+      x: 0
+      y: 0
+      z: 0

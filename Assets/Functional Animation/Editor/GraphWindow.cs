@@ -3,7 +3,7 @@ using UnityEditor;
 using UnityEngine.UIElements;
 using System;
 using UnityEditor.UIElements;
-using System.Linq;
+using Aikom.FunctionalAnimation.UI;
 
 namespace Aikom.FunctionalAnimation.Editor
 {
@@ -18,6 +18,13 @@ namespace Aikom.FunctionalAnimation.Editor
         private TextField[] _normalTimeValues = new TextField[3];
         private TextField[] _accelerationValues = new TextField[3];
         private VisualElement _scriptableElement;
+        private GraphDebugWindow _debugWindow;
+        private string _currentFilePath;
+
+        // **TEST**
+        private static TransformAnimation _targetAnim;
+        private AnimationData[] _fallbackData = new AnimationData[3];
+        private TransformProperty _selectedProperty;
 
         [MenuItem("Window/Functional Animation")]
         public static void Init()
@@ -26,7 +33,7 @@ namespace Aikom.FunctionalAnimation.Editor
             window.titleContent = new GUIContent("Graph Window");
         }
 
-        private void OnEnable()
+        private void CreateGUI()
         {   
             var styleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>("Assets/UI/GraphWindowStyles.uss");
             var root = rootVisualElement;
@@ -34,7 +41,7 @@ namespace Aikom.FunctionalAnimation.Editor
 
             // Render element
             var material = AssetDatabase.LoadAssetAtPath<Material>("Assets/UI/GraphMaterial.mat");
-            _renderElement = new GraphRenderElement(material);
+            _renderElement = new GraphRenderElement(material, root);
             _renderElement.style.width = new StyleLength(new Length(80f, LengthUnit.Percent));
             _renderElement.style.height = new StyleLength(new Length(80f, LengthUnit.Percent));
             _renderElement.style.backgroundColor = new StyleColor(new Color(0.2f, 0.2f, 0.2f));
@@ -42,6 +49,29 @@ namespace Aikom.FunctionalAnimation.Editor
             _renderElement.style.borderBottomWidth = new StyleFloat(2);
             _renderElement.style.borderLeftColor = new StyleColor(new Color(0.8f, 0.8f, 0.8f));
             _renderElement.style.borderBottomColor = new StyleColor(new Color(0.8f, 0.8f, 0.8f));
+
+            if (EditorPrefs.HasKey("HeldAnimationPath"))
+            {
+                _currentFilePath = EditorPrefs.GetString("HeldAnimationPath");
+                if (!string.IsNullOrEmpty(_currentFilePath) && _targetAnim == null)
+                {
+                    _targetAnim = AssetDatabase.LoadAssetAtPath<TransformAnimation>(_currentFilePath);
+                    _renderElement.Animation = _targetAnim;
+                }
+                else
+                {
+                    _fallbackData[0] = new AnimationData();
+                    _fallbackData[1] = new AnimationData();
+                    _fallbackData[2] = new AnimationData();
+                }
+            }
+            else
+            {
+                _fallbackData[0] = new AnimationData();
+                _fallbackData[1] = new AnimationData();
+                _fallbackData[2] = new AnimationData();
+            }
+
 
             // Side bar
             var sideBar = new VisualElement();
@@ -138,39 +168,188 @@ namespace Aikom.FunctionalAnimation.Editor
             _scriptableElement.Add(button);
             _scriptableElement.style.visibility = Visibility.Hidden;
 
+            // New Menu
+            var buttonContainer = new VisualElement();
+            buttonContainer.style.flexDirection = FlexDirection.Row;
+            buttonContainer.style.justifyContent = Justify.Center;
+            var createNewButton = new Button { text = "Create New" };
+            var saveButton = new Button { text = "Save" };
+            var saveAsButton = new Button { text = "Save As" };
+
+            buttonContainer.Add(createNewButton);
+            buttonContainer.Add(saveButton);
+            buttonContainer.Add(saveAsButton);
+
+            var objField = new ObjectField("Target Animation");
+            objField.objectType = typeof(TransformAnimation);
+            if (_targetAnim != null)
+            {
+                objField.value = _targetAnim;
+                _renderElement.Animation = _targetAnim;
+            }
+
+            var maxDuration = new FloatField("Max duration");
+            
+            var propSelector = new EnumField("Target Property", TransformProperty.Position);
+            var optionsContainer = new VisualElement();
+            optionsContainer.style.flexDirection = FlexDirection.Column;
+            optionsContainer.style.justifyContent = Justify.SpaceAround;
+
+            var animateToggle = new Toggle("Animate");
+            var syncToggle = new Toggle("Syncronize");
+            var axisSeparationToggle = new Toggle("Separate Axes");
+            var axisDurationField = new FloatField("Duration");
+            var timeControlField = new EnumField("Time control", TimeControl.OneShot);
+            var animateAxisLabel = new Label("Animateable Axes");
+            var animateAxisParent = new VisualElement();
+            animateAxisParent.style.flexDirection = FlexDirection.Row;
+            //animateAxisParent.style.justifyContent = Justify.SpaceAround;
+            var dummyAxis = new VisualElement();
+            dummyAxis.style.width = new StyleLength(new Length(153f, LengthUnit.Pixel));
+            var childContainer = new VisualElement();
+            childContainer.style.flexDirection = FlexDirection.Row;
+            childContainer.style.justifyContent = Justify.SpaceBetween;
+            childContainer.style.width = new StyleLength(new Length(50f, LengthUnit.Percent));
+            var animateAxisX = new Toggle("X");
+            animateAxisX.labelElement.style.minWidth = new StyleLength(new Length(10f, LengthUnit.Pixel));
+            var animateAxisY = new Toggle("Y");
+            animateAxisY.labelElement.style.minWidth = new StyleLength(new Length(10f, LengthUnit.Pixel));
+            var animateAxisZ = new Toggle("Z");
+            animateAxisZ.labelElement.style.minWidth = new StyleLength(new Length(10f, LengthUnit.Pixel));
+            childContainer.Add(animateAxisX);
+            childContainer.Add(animateAxisY);
+            childContainer.Add(animateAxisZ);
+            animateAxisParent.Add(dummyAxis);
+            animateAxisParent.Add(childContainer);
+           
+
+            var offsetField = new Vector3Field("Offset");
+            
+
+            optionsContainer.Add(animateToggle);
+            optionsContainer.Add(syncToggle);
+            optionsContainer.Add(axisSeparationToggle);
+            optionsContainer.Add(axisDurationField);
+            optionsContainer.Add(timeControlField);
+            optionsContainer.Add(animateAxisLabel);
+            optionsContainer.Add(animateAxisParent);
+            optionsContainer.Add(offsetField);
+
+            // Debug window
+            if(_targetAnim != null)
+                _debugWindow = new GraphDebugWindow(_targetAnim.AnimationData[0], Function.Linear, 0);
+            else
+                _debugWindow = new GraphDebugWindow(_fallbackData[0], Function.Linear, 0);
+
+            //var funcConstElement = new Label("Function constructor");
+            //_funcConst.FunctionData = new FunctionData[1];
+            //_funcConst.FunctionData[0] = new FunctionData(Function.EaseInElastic);
+            //var listView = new ListView(_funcConst.FunctionData, 20, () => new Label(), (elem, index) => (elem as Label).text = _funcConst.FunctionData[index].ToString());
+            //listView.style.flexGrow = 1;
+
             // Tree construction
             sideBar.Add(header);
             sideBar.Add(subHeaderGraphSettings);
             sideBar.Add(graphVertexCountSlider);
             sideBar.Add(gridLineAmountSlider);
             sideBar.Add(animatorHeader);
-            sideBar.Add(headerContainer);
-            sideBar.Add(positionInfoContainer);
-            sideBar.Add(rotationInfoContainer);
-            sideBar.Add(scaleInfoContainer);
-            sideBar.Add(_scriptableElement);
+
+            // **OLD**
+            //sideBar.Add(headerContainer);
+            //sideBar.Add(positionInfoContainer);
+            //sideBar.Add(rotationInfoContainer);
+            //sideBar.Add(scaleInfoContainer);
+            //sideBar.Add(_scriptableElement);
+
+
+            sideBar.Add(buttonContainer);
+            sideBar.Add(objField);
+            sideBar.Add(maxDuration);
+            sideBar.Add(propSelector);
+            sideBar.Add(optionsContainer);
+            sideBar.Add(_debugWindow);
+            //sideBar.Add(funcConstElement);
+            //sideBar.Add(listView);
             root.Add(sideBar);
             root.Add(_renderElement);
 
             // Register callbacks and set a fallback method for unbinds
-            Selection.selectionChanged += SetAnimatior;
+            //Selection.selectionChanged += SetAnimatior;
             RegisterCallbacks();
             _unregisterCbs = UnRegisterCallbacks;
 
             void ChangeVertexCount(ChangeEvent<int> e) => _renderElement.SampleAmount = e.newValue;
             void ChangeGridLineCount(ChangeEvent<int> e) => _renderElement.GridLines = e.newValue;
+            void ChangeTargetAnimation(ChangeEvent<UnityEngine.Object> e)
+            {
+                _targetAnim = e.newValue as TransformAnimation;
+                _renderElement.Animation = _targetAnim;
+                _selectedProperty = TransformProperty.Position;
+                _renderElement.DrawProperty = _selectedProperty;
+                if(_targetAnim != null)
+                    _debugWindow.OverrideTargetContainer(_targetAnim.AnimationData[(int)_selectedProperty]);
+                else
+                    _debugWindow.OverrideTargetContainer(_fallbackData[(int)_selectedProperty]);
+            }
+            void CreateNewAnimation()
+            {
+                var path = EditorUtility.SaveFilePanelInProject("Save animation", "New Animation", "asset", "Save animation");
+                
+                if (string.IsNullOrEmpty(path))
+                    return;
+                _targetAnim = TransformAnimation.SaveNew(path);
+                objField.value = _targetAnim;
+                _renderElement.Animation = _targetAnim;
+            }
+
+            void SetTargetProperty(ChangeEvent<Enum> e) => AssignTargetProperty((TransformProperty)e.newValue);
 
             void RegisterCallbacks()
             {
                 graphVertexCountSlider.RegisterValueChangedCallback(ChangeVertexCount);
                 gridLineAmountSlider.RegisterValueChangedCallback(ChangeGridLineCount);
+                objField.RegisterValueChangedCallback(ChangeTargetAnimation);
+                createNewButton.clicked += CreateNewAnimation;
+                _renderElement.RegisterCallback<MouseUpEvent>(HandleRightClick);
+                propSelector.RegisterValueChangedCallback(SetTargetProperty);
+                
             }
 
             void UnRegisterCallbacks()
             {
                 graphVertexCountSlider.UnregisterValueChangedCallback(ChangeVertexCount);
                 gridLineAmountSlider.UnregisterValueChangedCallback(ChangeGridLineCount);
-                UnBindLoadButton();
+                objField.UnregisterValueChangedCallback(ChangeTargetAnimation);
+                createNewButton.clicked -= CreateNewAnimation;
+                _renderElement.UnregisterCallback<MouseUpEvent>(HandleRightClick);
+                propSelector.UnregisterValueChangedCallback(SetTargetProperty);
+                //UnBindLoadButton();
+            }
+
+            void HandleRightClick(MouseUpEvent evt)
+            {
+                if (evt.button != (int)MouseButton.RightMouse)
+                    return;
+
+                var targetElement = evt.target as GraphRenderElement;
+                if (targetElement == null)
+                    return;
+
+                var menu = new GenericMenu();
+
+                var menuPosition = evt.mousePosition;
+                menuPosition = root.parent.LocalToWorld(menuPosition);
+                var menuRect = new Rect(menuPosition, Vector2.zero);
+
+                //Add functions to menu
+                var functionNames = (Function[])Enum.GetValues(typeof(Function));
+                for(int i = 0; i < functionNames.Length; i++)
+                {   
+                    var func = functionNames[i];
+                    menu.AddItem(new GUIContent(func.ToString()), false, value => AddFunction((FunctionPosition)value), new FunctionPosition(menuPosition, func));
+                }
+
+                menu.DropDown(menuRect);
             }
 
             VisualElement CreatePropertyFields(string label, int index)
@@ -207,75 +386,128 @@ namespace Aikom.FunctionalAnimation.Editor
             }
         }
 
+        
+        private void AssignTargetProperty(TransformProperty prop)
+        {   
+            if(_selectedProperty == prop)
+                return;
+
+            _renderElement.DrawProperty = prop;
+            _selectedProperty = prop;
+            _debugWindow.OverrideTargetContainer(_targetAnim.AnimationData[(int)prop]);
+        }
+        
+
+        private void AddFunction(FunctionPosition pos)
+        {
+            if (_targetAnim == null)
+                return;
+
+            var realPos = _renderElement.GetGraphPosition(pos.Position);
+            var container = _targetAnim.AnimationData[(int)_selectedProperty];
+            container.AddFunction(pos.Function, _debugWindow.CurrentAxis, realPos);
+            _debugWindow.Refresh();
+
+            Debug.Log("Selected: " + pos.Function.ToString());
+            Debug.Log("Calculated Position: " + realPos.ToString());
+            Debug.Log("Event position: " + pos.Position.ToString());
+        }
+
+        void OnLostFocus()
+        {   
+            _currentFilePath = _targetAnim != null ? AssetDatabase.GetAssetPath(_targetAnim) : null;
+            EditorPrefs.SetString("HeldAnimationPath", _currentFilePath);
+        }
+
+        void OnDestroy()
+        {
+            _currentFilePath = _targetAnim != null ? AssetDatabase.GetAssetPath(_targetAnim) : null;
+            EditorPrefs.SetString("HeldAnimationPath", _currentFilePath);
+        }
+
         private void OnDisable()
         {
-            Selection.selectionChanged -= SetAnimatior;
+            _currentFilePath = _targetAnim != null ? AssetDatabase.GetAssetPath(_targetAnim) : null;
+            EditorPrefs.SetString("HeldAnimationPath", _currentFilePath);
+            //Selection.selectionChanged -= SetAnimatior;
             _unregisterCbs?.Invoke();
         }
 
-        private void SetAnimatior()
-        {
-            var obj = Selection.activeGameObject;
-            if (obj != null && obj.TryGetComponent<TransformAnimator>(out var anim))
-            {
-                _renderElement.Animator = anim;
-                if(anim is ScriptableTransformAnimator)
-                {
-                    _scriptableElement.style.visibility = Visibility.Visible;
-                    _scriptableElement.Q<Button>().clicked += LoadAnimation;
-                }
-            }
-            else
-            {
-                _renderElement.Animator = null;
-                UnBindLoadButton();
-            }
-        }
+        //private void SetAnimatior()
+        //{
+        //    var obj = Selection.activeGameObject;
+        //    if (obj != null && obj.TryGetComponent<TransformAnimator>(out var anim))
+        //    {
+        //        _renderElement.Animation = anim;
+        //        if(anim is ScriptableTransformAnimator)
+        //        {
+        //            _scriptableElement.style.visibility = Visibility.Visible;
+        //            _scriptableElement.Q<Button>().clicked += LoadAnimation;
+        //        }
+        //    }
+        //    else
+        //    {
+        //        _renderElement.Animation = null;
+        //        UnBindLoadButton();
+        //    }
+        //}
 
-        private void UnBindLoadButton()
-        {
-            _scriptableElement.style.visibility = Visibility.Hidden;
-            _scriptableElement.Q<Button>().clicked -= LoadAnimation;
-        }
+        //private void UnBindLoadButton()
+        //{
+        //    _scriptableElement.style.visibility = Visibility.Hidden;
+        //    _scriptableElement.Q<Button>().clicked -= LoadAnimation;
+        //}
 
-        private void LoadAnimation()
-        {
-            var name = _scriptableElement.Q<TextField>().value;
-            var scriptableAnimator = _renderElement.Animator as ScriptableTransformAnimator;
-            if (scriptableAnimator != null || !string.IsNullOrEmpty(name))
-                scriptableAnimator.Play(name);
-        }
+        //private void LoadAnimation()
+        //{
+        //    var name = _scriptableElement.Q<TextField>().value;
+        //    var scriptableAnimator = _renderElement.Animation as ScriptableTransformAnimator;
+        //    if (scriptableAnimator != null || !string.IsNullOrEmpty(name))
+        //        scriptableAnimator.Play(name);
+        //}
 
-        private void OnInspectorUpdate()
-        {
-            if(_renderElement.Animator != null && !Application.isPlaying)
-                Repaint();
-            else if(_renderElement.Animator != null && Application.isPlaying)
-            {
-                for (int i = 0; i < 3; i++)
-                {
-                    var container = _renderElement.Animator.Container[i];
-                    if (container != null)
-                    {   
-                        var time = container.Time;
-                        _normalTimeValues[i].value = time.ToString("F2");
-                        _accelerationValues[i].value = (MathUtils.Derivate(container.EasingFunc, 
-                            time, _renderElement.MeasurementInterval) * container.Direction).ToString("F2");
-                    }
+        //private void OnInspectorUpdate()
+        //{
+        //    if(_renderElement.Animation != null && !Application.isPlaying)
+        //        Repaint();
+        //    else if(_renderElement.Animation != null && Application.isPlaying)
+        //    {
+        //        for (int i = 0; i < 3; i++)
+        //        {
+        //            var container = _renderElement.Animation.Container[i];
+        //            if (container != null)
+        //            {   
+        //                var time = container.Time;
+        //                _normalTimeValues[i].value = time.ToString("F2");
+        //                _accelerationValues[i].value = (MathUtils.Derivate(container.EasingFunc, 
+        //                    time, _renderElement.MeasurementInterval) * container.Direction).ToString("F2");
+        //            }
 
-                }
-            }
+        //        }
+        //    }
                 
-        }
+        //}
 
         private void Update()
         {
-            if (Application.isPlaying && _renderElement.Animator != null)
+            if (Application.isPlaying && _renderElement.Animation != null)
             {   
                 // This is for playhead update mainly
                 _renderElement.DrawGraph();
                 Repaint();
             }   
+        }
+
+        private struct FunctionPosition
+        {
+            public Vector2 Position;
+            public Function Function;
+
+            public FunctionPosition(Vector2 position, Function function)
+            {
+                Position = position;
+                Function = function;
+            }
         }
 
         /// <summary>
@@ -287,22 +519,29 @@ namespace Aikom.FunctionalAnimation.Editor
             private const int c_maxGridLines = 20;
 
             private Material _graphMaterial;
-            private int _sampleAmount = 200;
+            private int _sampleAmount = 1000;
             private int _gridLines = 10;
             private Label[] _gridMarkers = new Label[c_maxGridLines];
             private Label[] _gridTimeMarkers = new Label[c_maxGridLines];
             private int _currentMarkers = 0;
             private float _measurementInterval;
+            private Label _propertyName;
+            private VisualElement[] _positionMarkers = new VisualElement[20];
+            private VisualElement _root;
+            private VisualElement _dockWindow;
 
             public static int MaxGridLines { get => c_maxGridLines; }
-            public TransformAnimator Animator { get; set; }
+            public TransformAnimation Animation { get; set; }
             public int SampleAmount { get => _sampleAmount; set => _sampleAmount = value; }
             public int GridLines { get => _gridLines; set => _gridLines = value; }
             public float MeasurementInterval { get => _measurementInterval; }
+            public TransformProperty DrawProperty { get; set; }
 
-            public GraphRenderElement(Material lineMaterial)
+            public GraphRenderElement(Material lineMaterial, VisualElement root)
             {
                 _graphMaterial = lineMaterial;
+                _root = root;
+                _dockWindow = root.parent;
                 for(int i = 0; i < c_maxGridLines; i++)
                 {
                     Add(_gridMarkers[i] = CreateLabel());
@@ -324,11 +563,29 @@ namespace Aikom.FunctionalAnimation.Editor
                 var mainContainer = new VisualElement();
                 mainContainer.style.marginTop = new StyleLength(new Length(30f, LengthUnit.Pixel));
                 mainContainer.style.marginLeft = new StyleLength(new Length(5f, LengthUnit.Pixel));
+                mainContainer.style.maxWidth = new StyleLength(new Length(40f, LengthUnit.Pixel));
+                
+                _propertyName = new Label(DrawProperty.ToString());
+                mainContainer.Add(_propertyName);
                 Add(mainContainer);
 
-                CreateLegend("Postion", Color.red);
-                CreateLegend("Rotation", Color.blue);
-                CreateLegend("Scale", Color.green);
+                CreateLegend("X", Color.red);
+                CreateLegend("Y", Color.green);
+                CreateLegend("Z", Color.blue);
+
+                for(int i = 0; i < 20; i++)
+                {
+                    var marker = new VisualElement();
+                    marker.style.backgroundColor = new StyleColor(Color.white);
+                    marker.style.width = new StyleLength(new Length(7f, LengthUnit.Pixel));
+                    marker.style.height = new StyleLength(new Length(7f, LengthUnit.Pixel));
+                    marker.style.flexGrow = 0;
+                    marker.style.position = Position.Absolute;
+                    marker.style.visibility = Visibility.Hidden;
+                    _dockWindow.Add(marker);
+                    //marker.BringToFront();
+                    _positionMarkers[i] = marker;
+                }
 
                 void CreateLegend(string name, Color legendColor)
                 {
@@ -360,7 +617,7 @@ namespace Aikom.FunctionalAnimation.Editor
 
             public void DrawGraph()
             {
-                if (Animator == null)
+                if (Animation == null)
                     return;
                 
                 // **TEST**
@@ -374,143 +631,177 @@ namespace Aikom.FunctionalAnimation.Editor
                 _graphMaterial.SetPass(0);
                 GL.LoadOrtho();
                 GL.Begin(GL.LINES);
-
-                // Draws the grid and labels. The labels have really weird positioning logic that i mainly
-                // just eyeballed to get them to look right. Should still look relatively good when
-                // resizing the window
-                GL.Color(new Color(1,1,1,0.2f));
-                var interval = 1f / _gridLines;
-                for(int j = 1; j <= _gridLines; j++)
+                try
                 {
-                    float x = j * interval;
-
-                    // X-axis
-                    DrawVertex(x, 0);
-                    DrawVertex(x, 1);
-                    var timeMarker = _gridTimeMarkers[j - 1];
-                    timeMarker.style.visibility = Visibility.Visible;
-                    var duration = Animator.SyncAll? Animator.MaxDuration : 1f;
-                    timeMarker.text = (x * duration).ToString("F2");
-
-                    timeMarker.style.left = x * layout.width * 0.935f - (timeMarker.layout.width / 2);
-                    timeMarker.style.top = timeMarker.layout.height / 2;
-
-                    // Y-axis
-                    DrawVertex(0, x);
-                    DrawVertex(1, x);
-                    var gridMarker = _gridMarkers[j - 1];
-                    gridMarker.style.visibility = Visibility.Visible;
-                    gridMarker.text = (x).ToString("F2");
-                    gridMarker.style.left = layout.width - gridMarker.layout.width * 2.5f;
-                    gridMarker.style.bottom = x * layout.height * 0.9f - (gridMarker.layout.height / 2);
-                }
-
-                if(_gridLines > _currentMarkers)
-                    _currentMarkers = _gridLines;
-                else
-                    DisableInactiveMarkers();
-
-                var currentPositions = new Vector3[3];
-
-                for (int i = 0; i < 3; i++)
-                {
-                    SetColor(i);
-                    var container = Animator.Container[i];
-                    if (container == null || !container.Animate)
-                        continue;
-                    var func = container.FunctionConstructor.Generate();
-                    float sampleInc = 1f / _sampleAmount;
-                    _measurementInterval = sampleInc;
-
-                    // Unsyncronized time control
-                    if (!Animator.SyncAll)
+                    // Draws the grid and labels. The labels have really weird positioning logic that i mainly
+                    // just eyeballed to get them to look right. Should still look relatively good when
+                    // resizing the window
+                    GL.Color(new Color(1, 1, 1, 0.2f));
+                    var interval = 1f / _gridLines;
+                    for (int j = 1; j <= _gridLines; j++)
                     {
+                        float x = j * interval;
+
+                        // X-axis
+                        DrawVertex(x, 0);
+                        DrawVertex(x, 1);
+                        var timeMarker = _gridTimeMarkers[j - 1];
+                        timeMarker.style.visibility = Visibility.Visible;
+                        //var duration = Animator.SyncAll? Animator.MaxDuration : 1f;
+                        timeMarker.text = (x).ToString("F2"); // * duration
+
+                        timeMarker.style.left = x * layout.width * 0.935f - (timeMarker.layout.width / 2);
+                        timeMarker.style.top = timeMarker.layout.height / 2;
+
+                        // Y-axis
+                        DrawVertex(0, x);
+                        DrawVertex(1, x);
+                        var gridMarker = _gridMarkers[j - 1];
+                        gridMarker.style.visibility = Visibility.Visible;
+                        gridMarker.text = (x).ToString("F2");
+                        gridMarker.style.left = layout.width - gridMarker.layout.width * 2.5f;
+                        gridMarker.style.bottom = x * layout.height * 0.9f - (gridMarker.layout.height / 2);
+                    }
+
+                    if (_gridLines > _currentMarkers)
+                        _currentMarkers = _gridLines;
+                    else
+                        DisableInactiveMarkers();
+
+                    var currentPositions = new Vector3[3];
+
+
+                    var container = Animation.AnimationData[(int)DrawProperty];
+                    _propertyName.text = DrawProperty.ToString();
+                    var usedMarkers = 0;
+                    
+                    for (int j = 0; j < 3; j++)
+                    {
+                        SetColor(j);
+                        var func = container.GenerateFunction((Axis)j);
+                        float sampleInc = 1f / _sampleAmount;
+                        _measurementInterval = sampleInc;
+
+                        // Unsyncronized time control
+                        //if (!Animation.SyncAll)
+                        //{
+                        //    for (int sample = 0; sample < _sampleAmount; sample++)
+                        //    {
+                        //        DrawVertexSingle(sample);
+                        //        DrawVertexSingle(sample + 1);
+                        //    }
+                        //    //currentPositions[i] = GetAbsolutePos(container.Time, func(container.Time));
+                        //}
+                        // Syncronized time control. The time variables in the window are
+                        // not precise at all times but marker positions should be
+
+
+                        //float duration = container.TrimBack - container.TrimFront;
                         for (int sample = 0; sample < _sampleAmount; sample++)
                         {
                             DrawVertexSingle(sample);
-                            DrawVertexSingle(sample + 1);
-                        }
-                        currentPositions[i] = GetAbsolutePos(container.Time, func(container.Time));
-                    }
-                    // Syncronized time control. The time variables in the window are
-                    // not precise at all times but marker positions should be
-                    else
-                    {
-                        float duration = container.TrimBack - container.TrimFront;
-                        for (int sample = 0; sample < _sampleAmount; sample++)
-                        {   
-                            DrawVertexTrimmed(sample * sampleInc);
-                            DrawVertexTrimmed((sample + 1) * sampleInc);
+                            DrawVertexSingle((sample + 1));
                         }
 
-                        currentPositions[i] = GetAbsolutePos(Animator.Timer.Time, TrimValues(Animator.Timer.Time).y);
+                        //currentPositions[i] = GetAbsolutePos(Animation.Timer.Time, TrimValues(Animation.Timer.Time).y);
 
-                        void DrawVertexTrimmed(float x)
+                        //void DrawVertexTrimmed(float x)
+                        //{
+                        //    var vec = TrimValues(x);
+                        //    DrawVertex(vec.x, vec.y);
+                        //}
+
+                        //Vector2 TrimValues(float x)
+                        //{
+                        //    float y;
+                        //    if (x <= container.TrimFront)
+                        //        y = func.Invoke(0);
+                        //    else if (x >= container.TrimBack)
+                        //        y = func.Invoke(1);
+                        //    else
+                        //        y = func.Invoke((x - container.TrimFront) / duration);
+                        //    return new Vector2(x, y);
+                        //}
+
+
+                        Vector3 DrawVertexSingle(int index)
                         {
-                            var vec = TrimValues(x);
-                            DrawVertex(vec.x, vec.y);
+                            float x = index * sampleInc;
+                            return DrawVertex(x, func(x));
                         }
 
-                        Vector2 TrimValues(float x)
+
+                        // Add Position markers
+                        var nodes = container[j].Timeline.Nodes;
+                        for (int i = 0; i < nodes.Length; i++)
                         {
-                            float y;
-                            if (x <= container.TrimFront)
-                                y = func.Invoke(0);
-                            else if (x >= container.TrimBack)
-                                y = func.Invoke(1);
-                            else
-                                y = func.Invoke((x - container.TrimFront) / duration);
-                            return new Vector2(x, y);
+                            var data = nodes[i];
+                            ActivateMarker(data.x);
                         }
+                        void ActivateMarker(float time)
+                        {
+                            var pos = GetAbsolutePos(time, func(time));
+                            var marker = _positionMarkers[usedMarkers];
+                            marker.style.visibility = Visibility.Visible;
+                            marker.style.left = pos.x * _dockWindow.layout.width - (marker.layout.width / 2);
+                            marker.style.bottom = pos.y * _dockWindow.layout.height - (marker.layout.height / 2);
+                            marker.style.backgroundColor = new StyleColor(SetColor(j));
+                            usedMarkers++;
+                        }
+
                     }
 
-                    Vector3 DrawVertexSingle(int index)
-                    {
-                        float x = index * sampleInc;
-                        return DrawVertex(x, func(x));
-                    }
+
+
+                    //if(Application.isPlaying)
+                    //{
+                    //    // Draws the playhead
+                    //    GL.Color(Color.white);
+                    //    DrawVertex(Animation.Timer.Time, 0);
+                    //    DrawVertex(Animation.Timer.Time, 1);
+                    //    GL.End();
+
+                    //    // Draws the current time markers
+                    //    GL.Begin(GL.QUADS);
+                    //    var sideLen = 0.01f;
+                    //    for (int i = 0; i < 3; i++)
+                    //    {
+                    //        if (Animation.Container[i] == null || !Animation.Container[i].Animate)
+                    //            continue;
+                    //        SetColor(i);
+                    //        GL.Vertex3(currentPositions[i].x - sideLen, currentPositions[i].y - sideLen, 0);
+                    //        GL.Vertex3(currentPositions[i].x - sideLen, currentPositions[i].y + sideLen, 0);
+                    //        GL.Vertex3(currentPositions[i].x + sideLen, currentPositions[i].y + sideLen, 0);
+                    //        GL.Vertex3(currentPositions[i].x + sideLen, currentPositions[i].y - sideLen, 0);
+                    //    }
+                    //}
+
                 }
-
-                if(Application.isPlaying)
+                catch (Exception e)
                 {
-                    // Draws the playhead
-                    GL.Color(Color.white);
-                    DrawVertex(Animator.Timer.Time, 0);
-                    DrawVertex(Animator.Timer.Time, 1);
                     GL.End();
-
-                    // Draws the current time markers
-                    GL.Begin(GL.QUADS);
-                    var sideLen = 0.01f;
-                    for (int i = 0; i < 3; i++)
-                    {
-                        if (Animator.Container[i] == null || !Animator.Container[i].Animate)
-                            continue;
-                        SetColor(i);
-                        GL.Vertex3(currentPositions[i].x - sideLen, currentPositions[i].y - sideLen, 0);
-                        GL.Vertex3(currentPositions[i].x - sideLen, currentPositions[i].y + sideLen, 0);
-                        GL.Vertex3(currentPositions[i].x + sideLen, currentPositions[i].y + sideLen, 0);
-                        GL.Vertex3(currentPositions[i].x + sideLen, currentPositions[i].y - sideLen, 0);
-                    }
+                    //GL.PopMatrix();
+                    Debug.Log(e.Message);
                 }
                 GL.End();
                 GL.PopMatrix();
             }
 
-            private void SetColor(int index)
+            private Color SetColor(int index)
             {
                 switch (index)
                 {
                     case 0:
-                        GL.Color(Color.red);    // Position
-                        break;
+                        GL.Color(Color.red);    // X
+                        return Color.red;
                     case 1:
-                        GL.Color(Color.blue);   // Rotation
-                        break;
+                        GL.Color(Color.green);   // Y
+                        return Color.green;
                     case 2:
-                        GL.Color(Color.green);  // Scale
-                        break;
+                        GL.Color(Color.blue);  // Z
+                        return Color.blue;
                 }
+                return Color.white;
             }
 
             private void DisableInactiveMarkers()
@@ -542,7 +833,18 @@ namespace Aikom.FunctionalAnimation.Editor
             /// <param name="x"></param>
             /// <param name="y"></param>
             /// <returns></returns>
-            public Vector3 GetAbsolutePos(float x, float y) => new Vector3((x * 0.75f) + 0.2f, (y * 0.7f) + 0.2f, 0);
+            private Vector3 GetAbsolutePos(float x, float y) 
+            {   
+
+                return new Vector3((x * 0.75f) + 0.2f, (y * 0.7f) + 0.2f, 0); 
+            }
+
+            public Vector2 GetGraphPosition(Vector2 panelPositon)
+            {
+                var graphPos = new Vector2(panelPositon.x / _dockWindow.layout.width, 1 - (panelPositon.y / _dockWindow.layout.height));
+                var newVec = new Vector2((graphPos.x - 0.2f) / 0.75f, (graphPos.y - 0.2f) / 0.7f);
+                return newVec;
+            }
 
         }
     }

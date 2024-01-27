@@ -17,7 +17,7 @@ namespace Aikom.FunctionalAnimation
         private T _currentValue;
         private TimeKeeper _timer;
 
-        private static RoutineController _controllerInstance;
+        //private static RoutineController _controllerInstance;
 
         // Events
         public event Action<T> OnValueChanged;

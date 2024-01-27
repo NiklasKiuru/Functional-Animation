@@ -3,6 +3,7 @@ using UnityEngine;
 
 namespace Aikom.FunctionalAnimation
 {
+    [Serializable]
     public class MultiAxisVectorContainer : VectorContainerBase
     {
         [SerializeField] private FloatContainer _x;
@@ -40,9 +41,9 @@ namespace Aikom.FunctionalAnimation
         protected override void OnInitialize(Vector3 start)
         {
             //base.OnInitialize(start);
-            //_x = new FloatContainer(start.x, Target.x, Duration, null, );
-            //_y = new FloatContainer();
-            //_z = new FloatContainer();
+            _x = new FloatContainer(start.x, Target.x, Duration, null);
+            _y = new FloatContainer(start.y, Target.y, Duration, null);
+            _z = new FloatContainer(start.z, Target.z, Duration, null);
         }
     }
 
