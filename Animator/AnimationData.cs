@@ -31,6 +31,42 @@ namespace Aikom.FunctionalAnimation
 
         public int Length => 4;
 
+        public GraphData this[Axis index]
+        {
+            get
+            {
+                return index switch
+                {
+                    Axis.X => X,
+                    Axis.Y => Y,
+                    Axis.Z => Z,
+                    Axis.W => W,
+                    _ => throw new System.IndexOutOfRangeException(),
+                };
+            }
+
+            private set
+            {
+                switch (index)
+                {
+                    case Axis.X:
+                        X = value;
+                        break;
+                    case Axis.Y:
+                        Y = value;
+                        break;
+                    case Axis.Z:
+                        Z = value;
+                        break;
+                    case Axis.W:
+                        W = value;
+                        break;
+                    default:
+                        throw new System.IndexOutOfRangeException();
+                }
+            }
+        }
+
         public GraphData this[int index]
         {
             get
@@ -84,7 +120,7 @@ namespace Aikom.FunctionalAnimation
         /// <returns></returns>
         public Func<float, float> GenerateFunction(Axis axis)
         {
-            var data = this[(int)axis];
+            var data = this[axis];
             return data.GenerateFunction();
         }
 
@@ -96,7 +132,7 @@ namespace Aikom.FunctionalAnimation
         /// <param name="pos"></param>
         public void AddFunction(Function function, Axis axis, Vector2 pos)
         {
-            var data = this[(int)axis];
+            var data = this[axis];
             data.AddFunction(function, pos);
         }
 
@@ -109,7 +145,7 @@ namespace Aikom.FunctionalAnimation
         /// <returns>Resulting value in the data modified</returns>
         public Vector2 MoveTimelineNode(Axis axis, int position, Vector2 value)
         {   
-            var data = this[(int)axis];
+            var data = this[axis];
             return data.MoveTimelineNode(position, value);
         }
 
@@ -120,7 +156,7 @@ namespace Aikom.FunctionalAnimation
         /// <param name="position">The index position of the target function</param>
         public void RemoveFunction(Axis axis, int position)
         {
-            var data = this[(int)axis];
+            var data = this[axis];
             data.RemoveFunction(position);
         }
     }

@@ -1,5 +1,6 @@
 ﻿using PlasticPipe.PlasticProtocol.Messages;
 using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices.WindowsRuntime;
 using Unity.Plastic.Newtonsoft.Json.Linq;
 using UnityEngine;
@@ -141,8 +142,11 @@ namespace Aikom.FunctionalAnimation
     [Serializable]
     public class GraphData
     {
-        public Function[] Functions { get; private set; } = new Function[1];
-        public Timeline Timeline;
+        [SerializeField] private Function[] _functions = new Function[1];
+        [SerializeField] private Timeline _timeline;
+
+        public Function[] Functions { get => _functions; private set => _functions = value; }
+        public IReadOnlyCollection<Vector2> Nodes { get => _timeline.Nodes; }
 
         /// <summary>
         /// Creates new graph data with a given function as the default first function
@@ -151,7 +155,7 @@ namespace Aikom.FunctionalAnimation
         public GraphData(Function func = Function.Linear)
         {
             Functions[0] = func;
-            Timeline = new Timeline();
+            _timeline = new Timeline();
         }
 
         /// <summary>
@@ -163,8 +167,8 @@ namespace Aikom.FunctionalAnimation
             var funcs = new Func<float, float>[Functions.Length];
             for (int i = 0; i < Functions.Length; i++)
             {
-                var startingNode = Timeline.Nodes[i];
-                var endingNode = Timeline.Nodes[i + 1];
+                var startingNode = _timeline.Nodes[i];
+                var endingNode = _timeline.Nodes[i + 1];
                 var baseFunc = EditorFunctions.Funcs[Functions[i]];
                 var endingValue = endingNode.y;
                 var startingValue = startingNode.y;
@@ -187,8 +191,7 @@ namespace Aikom.FunctionalAnimation
                 float count = Functions.Length;
                 for (int i = 0; i < count; i++)
                 {
-                    var node = Timeline.Nodes[i];
-                    if (t >= Timeline.Nodes[i].x && t < Timeline.Nodes[i + 1].x)
+                    if (t >= _timeline.Nodes[i].x && t < _timeline.Nodes[i + 1].x)
                     {
                         return funcs[i](t);
                     }
@@ -205,7 +208,7 @@ namespace Aikom.FunctionalAnimation
         public void AddFunction(Function function, Vector2 pos)
         {
             var newArray = new Function[Functions.Length + 1];
-            var timeline = Timeline;
+            var timeline = _timeline;
 
             pos = new Vector2(Mathf.Clamp01(pos.x), Mathf.Clamp01(pos.y));
             var index = 0;
@@ -242,7 +245,7 @@ namespace Aikom.FunctionalAnimation
         public void RemoveFunction(int index)
         {
             var newArray = new Function[Functions.Length - 1];
-            var timeline = Timeline;
+            var timeline = _timeline;
 
             timeline.RemoveNode(index);
             var indexer = 0;
@@ -264,7 +267,7 @@ namespace Aikom.FunctionalAnimation
         /// <returns></returns>
         public Vector2 MoveTimelineNode(int position, Vector2 value)
         {
-            return Timeline.MoveNode(value, position);
+            return _timeline.MoveNode(value, position);
         }
     }
 }

@@ -23,7 +23,7 @@ namespace Aikom.FunctionalAnimation.Editor
 
         // **TEST**
         private static TransformAnimation _targetAnim;
-        private AnimationData[] _fallbackData = new AnimationData[3];
+        private AnimationData[] _fallbackData = new AnimationData[3] { new AnimationData(), new AnimationData(), new AnimationData() };
         private TransformProperty _selectedProperty;
 
         [MenuItem("Window/Functional Animation")]
@@ -58,20 +58,7 @@ namespace Aikom.FunctionalAnimation.Editor
                     _targetAnim = AssetDatabase.LoadAssetAtPath<TransformAnimation>(_currentFilePath);
                     _renderElement.Animation = _targetAnim;
                 }
-                else
-                {
-                    _fallbackData[0] = new AnimationData();
-                    _fallbackData[1] = new AnimationData();
-                    _fallbackData[2] = new AnimationData();
-                }
             }
-            else
-            {
-                _fallbackData[0] = new AnimationData();
-                _fallbackData[1] = new AnimationData();
-                _fallbackData[2] = new AnimationData();
-            }
-
 
             // Side bar
             var sideBar = new VisualElement();
@@ -203,7 +190,6 @@ namespace Aikom.FunctionalAnimation.Editor
             var animateAxisLabel = new Label("Animateable Axes");
             var animateAxisParent = new VisualElement();
             animateAxisParent.style.flexDirection = FlexDirection.Row;
-            //animateAxisParent.style.justifyContent = Justify.SpaceAround;
             var dummyAxis = new VisualElement();
             dummyAxis.style.width = new StyleLength(new Length(153f, LengthUnit.Pixel));
             var childContainer = new VisualElement();
@@ -241,12 +227,6 @@ namespace Aikom.FunctionalAnimation.Editor
             else
                 _debugWindow = new GraphDebugWindow(_fallbackData[0], Function.Linear, 0);
 
-            //var funcConstElement = new Label("Function constructor");
-            //_funcConst.FunctionData = new FunctionData[1];
-            //_funcConst.FunctionData[0] = new FunctionData(Function.EaseInElastic);
-            //var listView = new ListView(_funcConst.FunctionData, 20, () => new Label(), (elem, index) => (elem as Label).text = _funcConst.FunctionData[index].ToString());
-            //listView.style.flexGrow = 1;
-
             // Tree construction
             sideBar.Add(header);
             sideBar.Add(subHeaderGraphSettings);
@@ -268,8 +248,6 @@ namespace Aikom.FunctionalAnimation.Editor
             sideBar.Add(propSelector);
             sideBar.Add(optionsContainer);
             sideBar.Add(_debugWindow);
-            //sideBar.Add(funcConstElement);
-            //sideBar.Add(listView);
             root.Add(sideBar);
             root.Add(_renderElement);
 
@@ -286,6 +264,8 @@ namespace Aikom.FunctionalAnimation.Editor
                 _renderElement.Animation = _targetAnim;
                 _selectedProperty = TransformProperty.Position;
                 _renderElement.DrawProperty = _selectedProperty;
+                var axis = _debugWindow.CurrentAxis;
+                _renderElement.SetNodeMarkers(axis);
                 if(_targetAnim != null)
                     _debugWindow.OverrideTargetContainer(_targetAnim.AnimationData[(int)_selectedProperty]);
                 else
@@ -300,9 +280,14 @@ namespace Aikom.FunctionalAnimation.Editor
                 _targetAnim = TransformAnimation.SaveNew(path);
                 objField.value = _targetAnim;
                 _renderElement.Animation = _targetAnim;
+                var axis = _debugWindow.CurrentAxis;
+                _renderElement.SetNodeMarkers(axis);
             }
 
-            void SetTargetProperty(ChangeEvent<Enum> e) => AssignTargetProperty((TransformProperty)e.newValue);
+            void SetTargetProperty(ChangeEvent<Enum> e) 
+            {   
+                AssignTargetProperty((TransformProperty)e.newValue); 
+            }
 
             void RegisterCallbacks()
             {
@@ -310,9 +295,10 @@ namespace Aikom.FunctionalAnimation.Editor
                 gridLineAmountSlider.RegisterValueChangedCallback(ChangeGridLineCount);
                 objField.RegisterValueChangedCallback(ChangeTargetAnimation);
                 createNewButton.clicked += CreateNewAnimation;
-                _renderElement.RegisterCallback<MouseUpEvent>(HandleRightClick);
+                _renderElement.RegisterCallback<MouseUpEvent>(CreateFunctionMenu);
                 propSelector.RegisterValueChangedCallback(SetTargetProperty);
-                
+                _debugWindow.CurrentAxisChanged += _renderElement.SetNodeMarkers;
+                GraphDebugWindow.FunctionSelectionField.OnFunctionRemovedInUI += _renderElement.SetNodeMarkers;
             }
 
             void UnRegisterCallbacks()
@@ -321,12 +307,14 @@ namespace Aikom.FunctionalAnimation.Editor
                 gridLineAmountSlider.UnregisterValueChangedCallback(ChangeGridLineCount);
                 objField.UnregisterValueChangedCallback(ChangeTargetAnimation);
                 createNewButton.clicked -= CreateNewAnimation;
-                _renderElement.UnregisterCallback<MouseUpEvent>(HandleRightClick);
+                _renderElement.UnregisterCallback<MouseUpEvent>(CreateFunctionMenu);
                 propSelector.UnregisterValueChangedCallback(SetTargetProperty);
+                _debugWindow.CurrentAxisChanged -= _renderElement.SetNodeMarkers;
+                GraphDebugWindow.FunctionSelectionField.OnFunctionRemovedInUI -= _renderElement.SetNodeMarkers;
                 //UnBindLoadButton();
             }
 
-            void HandleRightClick(MouseUpEvent evt)
+            void CreateFunctionMenu(MouseUpEvent evt)
             {
                 if (evt.button != (int)MouseButton.RightMouse)
                     return;
@@ -395,6 +383,7 @@ namespace Aikom.FunctionalAnimation.Editor
             _renderElement.DrawProperty = prop;
             _selectedProperty = prop;
             _debugWindow.OverrideTargetContainer(_targetAnim.AnimationData[(int)prop]);
+            _renderElement.SetNodeMarkers(_debugWindow.CurrentAxis);
         }
         
 
@@ -407,6 +396,7 @@ namespace Aikom.FunctionalAnimation.Editor
             var container = _targetAnim.AnimationData[(int)_selectedProperty];
             container.AddFunction(pos.Function, _debugWindow.CurrentAxis, realPos);
             _debugWindow.Refresh();
+            _renderElement.SetNodeMarkers(_debugWindow.CurrentAxis);
 
             Debug.Log("Selected: " + pos.Function.ToString());
             Debug.Log("Calculated Position: " + realPos.ToString());
@@ -526,9 +516,11 @@ namespace Aikom.FunctionalAnimation.Editor
             private int _currentMarkers = 0;
             private float _measurementInterval;
             private Label _propertyName;
-            private VisualElement[] _positionMarkers = new VisualElement[20];
+            private NodeElement[] _positionMarkers = new NodeElement[30];
+            private NodeElement _activeDragElement;
             private VisualElement _root;
             private VisualElement _dockWindow;
+            private bool _isDragging = false;
 
             public static int MaxGridLines { get => c_maxGridLines; }
             public TransformAnimation Animation { get; set; }
@@ -573,19 +565,17 @@ namespace Aikom.FunctionalAnimation.Editor
                 CreateLegend("Y", Color.green);
                 CreateLegend("Z", Color.blue);
 
-                for(int i = 0; i < 20; i++)
+                for(int i = 0; i < _positionMarkers.Length; i++)
                 {
-                    var marker = new VisualElement();
-                    marker.style.backgroundColor = new StyleColor(Color.white);
-                    marker.style.width = new StyleLength(new Length(7f, LengthUnit.Pixel));
-                    marker.style.height = new StyleLength(new Length(7f, LengthUnit.Pixel));
-                    marker.style.flexGrow = 0;
-                    marker.style.position = Position.Absolute;
-                    marker.style.visibility = Visibility.Hidden;
+                    var marker = new NodeElement();
+                    marker.RegisterCallback<MouseDownEvent>(OnDragStart);
+                    marker.RegisterCallback<MouseUpEvent>(OnDragEnd);
                     _dockWindow.Add(marker);
-                    //marker.BringToFront();
                     _positionMarkers[i] = marker;
                 }
+
+                RegisterCallback<MouseMoveEvent>(OnMarkerElementPositionChanged);
+                RegisterCallback<MouseUpEvent>(OnDragEnd);
 
                 void CreateLegend(string name, Color legendColor)
                 {
@@ -607,6 +597,70 @@ namespace Aikom.FunctionalAnimation.Editor
                     legContainer.Add(colorContainer);
                     legContainer.Add(label);
                     mainContainer.Add(legContainer);
+                }
+            }
+
+            ~GraphRenderElement()
+            {
+                for (int i = 0; i < _positionMarkers.Length; i++)
+                {
+                    _positionMarkers[i].UnregisterCallback<MouseDownEvent>(OnDragStart);
+                    _positionMarkers[i].UnregisterCallback<MouseUpEvent>(OnDragEnd);
+                }
+                UnregisterCallback<MouseMoveEvent>(OnMarkerElementPositionChanged);
+                UnregisterCallback<MouseUpEvent>(OnDragEnd);
+            }
+
+            private void OnMarkerElementPositionChanged(MouseMoveEvent evt)
+            {
+                if (!_isDragging || Animation == null || _activeDragElement == null)
+                    return;
+                var pos = _dockWindow.LocalToWorld(evt.mousePosition);
+                var graphPos = GetGraphPosition(pos);
+                var result = Animation.AnimationData[(int)DrawProperty][_activeDragElement.Axis].MoveTimelineNode(_activeDragElement.Index, graphPos);
+                var globalPos = GetAbsolutePos(result.x, result.y);
+                _activeDragElement.style.left = globalPos.x * _dockWindow.layout.width - (_activeDragElement.layout.width / 2);
+                _activeDragElement.style.bottom = globalPos.y * _dockWindow.layout.height - (_activeDragElement.layout.height / 2);
+            }
+
+            private void OnDragStart(MouseDownEvent evt)
+            {   
+                if(evt.button != (int)MouseButton.LeftMouse)
+                    return;
+                if (evt.target is not NodeElement dragElement)
+                    return;
+                _activeDragElement = dragElement;
+                _isDragging = true;
+            }
+
+            private void OnDragEnd(MouseUpEvent evt)
+            {   
+                if(evt.button != (int)MouseButton.LeftMouse)
+                    return;
+                _activeDragElement = null;
+                _isDragging = false;
+            }
+
+            public void SetNodeMarkers(Axis axis)
+            {
+                if (Animation == null)
+                    return;
+                for(int i = 0; i < _positionMarkers.Length; i++)
+                    _positionMarkers[i].style.visibility = Visibility.Hidden;
+
+                var axisColor = GetAxisColor(axis);
+                var activeMarkers = 0;
+                var container = Animation.AnimationData[(int)DrawProperty];
+                var nodes = container[axis].Nodes;
+                foreach(var node in nodes)
+                {
+                    var pos = GetAbsolutePos(node.x, node.y);
+                    var marker = _positionMarkers[activeMarkers];
+                    marker.style.visibility = Visibility.Visible;
+                    marker.style.left = pos.x * _dockWindow.layout.width - (marker.layout.width / 2);
+                    marker.style.bottom = pos.y * _dockWindow.layout.height - (marker.layout.height / 2);
+                    marker.Activate(activeMarkers, axisColor, axis);
+                    activeMarkers++;
                 }
             }
 
@@ -673,7 +727,6 @@ namespace Aikom.FunctionalAnimation.Editor
 
                     var container = Animation.AnimationData[(int)DrawProperty];
                     _propertyName.text = DrawProperty.ToString();
-                    var usedMarkers = 0;
                     
                     for (int j = 0; j < 3; j++)
                     {
@@ -729,26 +782,6 @@ namespace Aikom.FunctionalAnimation.Editor
                             float x = index * sampleInc;
                             return DrawVertex(x, func(x));
                         }
-
-
-                        // Add Position markers
-                        var nodes = container[j].Timeline.Nodes;
-                        for (int i = 0; i < nodes.Length; i++)
-                        {
-                            var data = nodes[i];
-                            ActivateMarker(data.x);
-                        }
-                        void ActivateMarker(float time)
-                        {
-                            var pos = GetAbsolutePos(time, func(time));
-                            var marker = _positionMarkers[usedMarkers];
-                            marker.style.visibility = Visibility.Visible;
-                            marker.style.left = pos.x * _dockWindow.layout.width - (marker.layout.width / 2);
-                            marker.style.bottom = pos.y * _dockWindow.layout.height - (marker.layout.height / 2);
-                            marker.style.backgroundColor = new StyleColor(SetColor(j));
-                            usedMarkers++;
-                        }
-
                     }
 
 
@@ -787,19 +820,23 @@ namespace Aikom.FunctionalAnimation.Editor
                 GL.PopMatrix();
             }
 
-            private Color SetColor(int index)
+            private void SetColor(int index)
             {
-                switch (index)
+                GL.Color(GetAxisColor((Axis)index));
+            }
+
+            private Color GetAxisColor(Axis axis)
+            {
+                switch (axis)
                 {
-                    case 0:
-                        GL.Color(Color.red);    // X
+                    case Axis.X:
                         return Color.red;
-                    case 1:
-                        GL.Color(Color.green);   // Y
+                    case Axis.Y:
                         return Color.green;
-                    case 2:
-                        GL.Color(Color.blue);  // Z
+                    case Axis.Z:
                         return Color.blue;
+                    case Axis.W:
+                        return Color.white;
                 }
                 return Color.white;
             }
