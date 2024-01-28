@@ -6,7 +6,7 @@ using UnityEngine;
 namespace Aikom.FunctionalAnimation
 {
     [Serializable]
-    public class AnimationData : IIndexable<GraphData>
+    public class AnimationData : IIndexable<GraphData, Axis>
     {
         // X-Axis modulation
         public GraphData X;
@@ -111,6 +111,7 @@ namespace Aikom.FunctionalAnimation
             W = new GraphData();
             AnimateableAxis = new bool3(true, true, true);
             Animate = true;
+            SeparateAxis = true;
         }
 
         /// <summary>

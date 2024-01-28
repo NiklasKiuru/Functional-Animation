@@ -18,7 +18,7 @@ namespace Aikom.FunctionalAnimation.Editor
         private TextField[] _normalTimeValues = new TextField[3];
         private TextField[] _accelerationValues = new TextField[3];
         private VisualElement _scriptableElement;
-        private GraphDebugWindow _debugWindow;
+        private GraphFunctionController _funcSelector;
         private string _currentFilePath;
 
         // **TEST**
@@ -169,12 +169,6 @@ namespace Aikom.FunctionalAnimation.Editor
 
             var objField = new ObjectField("Target Animation");
             objField.objectType = typeof(TransformAnimation);
-            if (_targetAnim != null)
-            {
-                objField.value = _targetAnim;
-                _renderElement.Animation = _targetAnim;
-            }
-
             var maxDuration = new FloatField("Max duration");
             
             var propSelector = new EnumField("Target Property", TransformProperty.Position);
@@ -202,16 +196,16 @@ namespace Aikom.FunctionalAnimation.Editor
             animateAxisY.labelElement.style.minWidth = new StyleLength(new Length(10f, LengthUnit.Pixel));
             var animateAxisZ = new Toggle("Z");
             animateAxisZ.labelElement.style.minWidth = new StyleLength(new Length(10f, LengthUnit.Pixel));
+            var offsetField = new Vector3Field("Offset");
+
+            ReadTargetValues();
+
             childContainer.Add(animateAxisX);
             childContainer.Add(animateAxisY);
             childContainer.Add(animateAxisZ);
             animateAxisParent.Add(dummyAxis);
             animateAxisParent.Add(childContainer);
-           
-
-            var offsetField = new Vector3Field("Offset");
             
-
             optionsContainer.Add(animateToggle);
             optionsContainer.Add(syncToggle);
             optionsContainer.Add(axisSeparationToggle);
@@ -223,9 +217,9 @@ namespace Aikom.FunctionalAnimation.Editor
 
             // Debug window
             if(_targetAnim != null)
-                _debugWindow = new GraphDebugWindow(_targetAnim.AnimationData[0], Function.Linear, 0);
+                _funcSelector = new GraphFunctionController(_targetAnim.AnimationData[0], Function.Linear, Axis.X);
             else
-                _debugWindow = new GraphDebugWindow(_fallbackData[0], Function.Linear, 0);
+                _funcSelector = new GraphFunctionController(_fallbackData[0], Function.Linear, Axis.X);
 
             // Tree construction
             sideBar.Add(header);
@@ -247,7 +241,7 @@ namespace Aikom.FunctionalAnimation.Editor
             sideBar.Add(maxDuration);
             sideBar.Add(propSelector);
             sideBar.Add(optionsContainer);
-            sideBar.Add(_debugWindow);
+            sideBar.Add(_funcSelector);
             root.Add(sideBar);
             root.Add(_renderElement);
 
@@ -256,20 +250,108 @@ namespace Aikom.FunctionalAnimation.Editor
             RegisterCallbacks();
             _unregisterCbs = UnRegisterCallbacks;
 
+            void ReadTargetValues()
+            {
+                if (_targetAnim == null)
+                    return;
+                var targetProp = _targetAnim[_selectedProperty];
+                _renderElement.Animation = _targetAnim;
+                objField.value = _targetAnim;
+                maxDuration.value = _targetAnim.Duration;
+                animateToggle.value = targetProp.Animate;
+                syncToggle.value = targetProp.Sync;
+                axisSeparationToggle.value = targetProp.SeparateAxis;
+                axisDurationField.value = targetProp.Duration;
+                timeControlField.value = targetProp.TimeControl;
+                animateAxisX.value = targetProp.AnimateableAxis.x;
+                animateAxisY.value = targetProp.AnimateableAxis.y;
+                animateAxisZ.value = targetProp.AnimateableAxis.z;
+                offsetField.value = targetProp.Offset;
+            }
+
+            // Graph settings callbacks
             void ChangeVertexCount(ChangeEvent<int> e) => _renderElement.SampleAmount = e.newValue;
             void ChangeGridLineCount(ChangeEvent<int> e) => _renderElement.GridLines = e.newValue;
+
+            void ChangeMaxDuration(ChangeEvent<float> e)
+            {
+                if (_targetAnim == null)
+                    return;
+                _targetAnim[_selectedProperty].Duration = e.newValue;
+            }  
+            
+            void ChangeAnimate(ChangeEvent<bool> e)
+            {
+                if (_targetAnim == null)
+                    return;
+                _targetAnim[_selectedProperty].Animate = e.newValue;
+            }
+
+            void ChangeSync(ChangeEvent<bool> e)
+            {
+                if (_targetAnim == null)
+                    return;
+                _targetAnim[_selectedProperty].Sync = e.newValue;
+            }
+
+            void ChangeSeparateAxis(ChangeEvent<bool> e)
+            {
+                if (_targetAnim == null)
+                    return;
+                _targetAnim[_selectedProperty].SeparateAxis = e.newValue;
+            }
+
+            void ChangeDuration(ChangeEvent<float> e)
+            {
+                if (_targetAnim == null)
+                    return;
+                _targetAnim[_selectedProperty].Duration = e.newValue;
+            }
+
+            void ChangeTimeControl(ChangeEvent<Enum> e)
+            {
+                if (_targetAnim == null)
+                    return;
+                _targetAnim[_selectedProperty].TimeControl = (TimeControl)e.newValue;
+            }
+
+            void ChangeAnimateableAxis(ChangeEvent<bool> e)
+            {
+                if (_targetAnim == null)
+                    return;
+                var prop = _targetAnim[_selectedProperty];
+                var axis = prop.AnimateableAxis;
+                var index = (e.target as Toggle).label switch
+                {
+                    "X" => 0,
+                    "Y" => 1,
+                    "Z" => 2,
+                    _ => throw new System.IndexOutOfRangeException(),
+                };
+                axis[index] = e.newValue;
+                prop.AnimateableAxis = axis;
+            }
+
+            void SetOffset(ChangeEvent<Vector3> e)
+            {
+                if (_targetAnim == null)
+                    return;
+                _targetAnim[_selectedProperty].Offset = e.newValue;
+            }
+
             void ChangeTargetAnimation(ChangeEvent<UnityEngine.Object> e)
             {
                 _targetAnim = e.newValue as TransformAnimation;
                 _renderElement.Animation = _targetAnim;
                 _selectedProperty = TransformProperty.Position;
                 _renderElement.DrawProperty = _selectedProperty;
-                var axis = _debugWindow.CurrentAxis;
+                var axis = _funcSelector.CurrentAxis;
                 _renderElement.SetNodeMarkers(axis);
                 if(_targetAnim != null)
-                    _debugWindow.OverrideTargetContainer(_targetAnim.AnimationData[(int)_selectedProperty]);
+                    _funcSelector.OverrideTargetContainer(_targetAnim.AnimationData[(int)_selectedProperty]);
                 else
-                    _debugWindow.OverrideTargetContainer(_fallbackData[(int)_selectedProperty]);
+                    _funcSelector.OverrideTargetContainer(_fallbackData[(int)_selectedProperty]);
+                ReadTargetValues();
             }
             void CreateNewAnimation()
             {
@@ -280,13 +362,15 @@ namespace Aikom.FunctionalAnimation.Editor
                 _targetAnim = TransformAnimation.SaveNew(path);
                 objField.value = _targetAnim;
                 _renderElement.Animation = _targetAnim;
-                var axis = _debugWindow.CurrentAxis;
+                var axis = _funcSelector.CurrentAxis;
                 _renderElement.SetNodeMarkers(axis);
+                ReadTargetValues();
             }
 
             void SetTargetProperty(ChangeEvent<Enum> e) 
             {   
-                AssignTargetProperty((TransformProperty)e.newValue); 
+                AssignTargetProperty((TransformProperty)e.newValue);
+                ReadTargetValues();
             }
 
             void RegisterCallbacks()
@@ -297,8 +381,18 @@ namespace Aikom.FunctionalAnimation.Editor
                 createNewButton.clicked += CreateNewAnimation;
                 _renderElement.RegisterCallback<MouseUpEvent>(CreateFunctionMenu);
                 propSelector.RegisterValueChangedCallback(SetTargetProperty);
-                _debugWindow.CurrentAxisChanged += _renderElement.SetNodeMarkers;
-                GraphDebugWindow.FunctionSelectionField.OnFunctionRemovedInUI += _renderElement.SetNodeMarkers;
+                _funcSelector.CurrentAxisChanged += _renderElement.SetNodeMarkers;
+                GraphFunctionController.FunctionSelectionField.OnFunctionRemovedInUI += _renderElement.SetNodeMarkers;
+                maxDuration.RegisterValueChangedCallback(ChangeMaxDuration);
+                animateToggle.RegisterValueChangedCallback(ChangeAnimate);
+                syncToggle.RegisterValueChangedCallback(ChangeSync);
+                axisSeparationToggle.RegisterValueChangedCallback(ChangeSeparateAxis);
+                axisDurationField.RegisterValueChangedCallback(ChangeDuration);
+                timeControlField.RegisterValueChangedCallback(ChangeTimeControl);
+                animateAxisX.RegisterValueChangedCallback(ChangeAnimateableAxis);
+                animateAxisY.RegisterValueChangedCallback(ChangeAnimateableAxis);
+                animateAxisZ.RegisterValueChangedCallback(ChangeAnimateableAxis);
+                offsetField.RegisterValueChangedCallback(SetOffset);
             }
 
             void UnRegisterCallbacks()
@@ -309,9 +403,18 @@ namespace Aikom.FunctionalAnimation.Editor
                 createNewButton.clicked -= CreateNewAnimation;
                 _renderElement.UnregisterCallback<MouseUpEvent>(CreateFunctionMenu);
                 propSelector.UnregisterValueChangedCallback(SetTargetProperty);
-                _debugWindow.CurrentAxisChanged -= _renderElement.SetNodeMarkers;
-                GraphDebugWindow.FunctionSelectionField.OnFunctionRemovedInUI -= _renderElement.SetNodeMarkers;
-                //UnBindLoadButton();
+                _funcSelector.CurrentAxisChanged -= _renderElement.SetNodeMarkers;
+                GraphFunctionController.FunctionSelectionField.OnFunctionRemovedInUI -= _renderElement.SetNodeMarkers;
+                maxDuration.UnregisterValueChangedCallback(ChangeMaxDuration);
+                animateToggle.UnregisterValueChangedCallback(ChangeAnimate);
+                syncToggle.UnregisterValueChangedCallback(ChangeSync);
+                axisSeparationToggle.UnregisterValueChangedCallback(ChangeSeparateAxis);
+                axisDurationField.UnregisterValueChangedCallback(ChangeDuration);
+                timeControlField.UnregisterValueChangedCallback(ChangeTimeControl);
+                animateAxisX.UnregisterValueChangedCallback(ChangeAnimateableAxis);
+                animateAxisY.UnregisterValueChangedCallback(ChangeAnimateableAxis);
+                animateAxisZ.UnregisterValueChangedCallback(ChangeAnimateableAxis);
+                offsetField.UnregisterValueChangedCallback(SetOffset);
             }
 
             void CreateFunctionMenu(MouseUpEvent evt)
@@ -382,8 +485,8 @@ namespace Aikom.FunctionalAnimation.Editor
 
             _renderElement.DrawProperty = prop;
             _selectedProperty = prop;
-            _debugWindow.OverrideTargetContainer(_targetAnim.AnimationData[(int)prop]);
-            _renderElement.SetNodeMarkers(_debugWindow.CurrentAxis);
+            _funcSelector.OverrideTargetContainer(_targetAnim.AnimationData[(int)prop]);
+            _renderElement.SetNodeMarkers(_funcSelector.CurrentAxis);
         }
         
 
@@ -394,9 +497,9 @@ namespace Aikom.FunctionalAnimation.Editor
 
             var realPos = _renderElement.GetGraphPosition(pos.Position);
             var container = _targetAnim.AnimationData[(int)_selectedProperty];
-            container.AddFunction(pos.Function, _debugWindow.CurrentAxis, realPos);
-            _debugWindow.Refresh();
-            _renderElement.SetNodeMarkers(_debugWindow.CurrentAxis);
+            container.AddFunction(pos.Function, _funcSelector.CurrentAxis, realPos);
+            _funcSelector.Refresh();
+            _renderElement.SetNodeMarkers(_funcSelector.CurrentAxis);
 
             Debug.Log("Selected: " + pos.Function.ToString());
             Debug.Log("Calculated Position: " + realPos.ToString());

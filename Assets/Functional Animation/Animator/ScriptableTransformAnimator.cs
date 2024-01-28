@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace Aikom.FunctionalAnimation
 {
-    public class ScriptableTransformAnimator : TransformAnimator
+    public class ScriptableTransformAnimator : MonoBehaviour
     {
         [SerializeReference] private TransformAnimation[] _animations = new TransformAnimation[0];
         [SerializeReference] private bool _playOnAwake;
@@ -12,6 +12,8 @@ namespace Aikom.FunctionalAnimation
 
         private Dictionary<int, TransformAnimation> _atlas = new Dictionary<int, TransformAnimation>();
         private EventContainer[] _eventContainer;
+        private RuntimeController _runtimeController = new();
+
 
         /// <summary>
         /// Loads an animation from an animation object
@@ -19,15 +21,7 @@ namespace Aikom.FunctionalAnimation
         /// <param name="anim"></param>
         internal void Load(TransformAnimation anim)
         {
-            Container.Position = anim.Data.Position;
-            Container.Rotation = anim.Data.Rotation;
-            Container.Scale = anim.Data.Scale;
-            SyncAll = anim.Sync;
-            Loop = anim.Loop;
-            MaxDuration = anim.Duration;
-            enabled = true;
-
-            Validate();
+            _runtimeController.SetAnimation(anim, transform);
         }
 
         /// <summary>
@@ -51,13 +45,13 @@ namespace Aikom.FunctionalAnimation
                 Load(anim);
                 SetBinding((i, c) => _eventContainer[i].Bind(c));
 
-                void SetBinding(Action<int, VectorContainer> bind)
+                void SetBinding(Action<int, Interpolator<Vector3>> bind)
                 {
                     for(int i = 0; i < 3; i++)
                     {
-                        if (Container[i] == null)
+                        if (_runtimeController.VectorInterpolators[i] == null)
                             continue;
-                        bind(i, Container[i]);
+                        bind(i, _runtimeController.VectorInterpolators[i]);
                     }
                 }
             }    
@@ -78,6 +72,11 @@ namespace Aikom.FunctionalAnimation
                 Play(hash);
         }
 
+        private void Update()
+        {
+            _runtimeController.Update();
+        }
+
         private void Awake()
         {   
             InitializeEventContainers();
@@ -85,7 +84,7 @@ namespace Aikom.FunctionalAnimation
                 Play(_playAwakeName);
         }
 
-        protected override void OnValidate()
+        protected void OnValidate()
         {   
             _atlas.Clear();
             if(_eventContainer == null)
@@ -99,8 +98,7 @@ namespace Aikom.FunctionalAnimation
             }
         }
 
-        /// <inheritdoc/>
-        public override void RegisterCallBack(int propContainerIndex, Action<Vector3> callback, EventType evt)
+        private void RegisterCallBack(int propContainerIndex, Action<Vector3> callback, EventType evt)
         {
             if(propContainerIndex < _eventContainer.Length && propContainerIndex > 0)
             {
@@ -119,8 +117,7 @@ namespace Aikom.FunctionalAnimation
             }
         }
 
-        /// <inheritdoc/>
-        public override void UnRegisterCallBack(int propContainerIndex, Action<Vector3> callback, EventType evt)
+        private void UnRegisterCallBack(int propContainerIndex, Action<Vector3> callback, EventType evt)
         {
             if(propContainerIndex < _eventContainer.Length && propContainerIndex > 0)
             {
@@ -166,7 +163,7 @@ namespace Aikom.FunctionalAnimation
             /// Binds animation events to the container
             /// </summary>
             /// <param name="cont"></param>
-            public void Bind(VectorContainer cont)
+            public void Bind(Interpolator<Vector3> cont)
             {   
                 cont.OnStartReached += OnStartReached;
                 cont.OnTargetReached += OnTargetReached;
@@ -177,7 +174,7 @@ namespace Aikom.FunctionalAnimation
             /// Unbinds animation events from the container
             /// </summary>
             /// <param name="cont"></param>
-            public void UnBind(VectorContainer cont)
+            public void UnBind(Interpolator<Vector3> cont)
             {
                 cont.OnStartReached += OnStartReached;
                 cont.OnTargetReached += OnTargetReached;

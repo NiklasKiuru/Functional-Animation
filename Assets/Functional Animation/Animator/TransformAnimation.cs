@@ -6,7 +6,7 @@ using Aikom.FunctionalAnimation.Utility;
 
 namespace Aikom.FunctionalAnimation
 {
-    public class TransformAnimation : ScriptableObject
+    public class TransformAnimation : ScriptableObject, IIndexable<AnimationData, TransformProperty>
     {
         private TransformContainer<VectorContainer> _data;
         private bool _loop;
@@ -44,6 +44,10 @@ namespace Aikom.FunctionalAnimation
 
         public AnimationData[] AnimationData => _animationData;
 
+        public int Length => 3;
+
+        public AnimationData this[TransformProperty index] { get => _animationData[(int)index]; set => _animationData[(int)index] = value; }
+
         public void Load(ref GraphData[] target, TransformProperty prop, Axis axis)
         {
             //var targetProp = _animationData[(int)prop];
@@ -66,6 +70,26 @@ namespace Aikom.FunctionalAnimation
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
             return asset;
+        }
+
+        public MatrixRxC<bool> GetSelectionMatrix()
+        {
+            var mat = new MatrixRxC<bool>(3, 4);
+            for(int i = 0; i < Length; i++)
+            {   
+                var data = _animationData[i];
+                if (!data.SeparateAxis)
+                {
+                    mat.SetRow(i, new bool[] { false, false, false, true });
+                    continue;
+                }
+                else
+                {   
+                    var row = new bool[4] { data.AnimateableAxis[0], data.AnimateableAxis[1], data.AnimateableAxis[2], false };
+                    mat.SetRow(i, row);
+                }
+            }
+            return mat;
         }
 
         public AnimationData[] GetData() => _animationData;

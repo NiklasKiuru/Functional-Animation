@@ -509,57 +509,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5b5c38d3e6fb1fb46b4def6f515e3197, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _animateAllOnAwake: 1
-  _syncAll: 0
-  _maxDuration: 0
-  _loop: 0
-  _delay: 0
-  _container:
-    _position:
-      _animate: 1
-      _timeControl: 0
-      _duration: 0
-      _trimFront: 0
-      _trimBack: 1
-      _target: {x: 0, y: 5, z: 0}
-      Offset: {x: 0, y: 0, z: 0}
-      Axis:
-        x: 1
-        y: 1
-        z: 1
-      FunctionConstructor:
-        _functions: []
-    _rotation:
-      _animate: 1
-      _timeControl: 0
-      _duration: 0
-      _trimFront: 0
-      _trimBack: 1
-      _target: {x: 0, y: 0, z: 0}
-      Offset: {x: 0, y: 0, z: 0}
-      Axis:
-        x: 1
-        y: 1
-        z: 1
-      FunctionConstructor:
-        _functions: []
-    _scale:
-      _animate: 1
-      _timeControl: 0
-      _duration: 0
-      _trimFront: 0
-      _trimBack: 1
-      _target: {x: 1, y: 1, z: 1}
-      Offset: {x: 0, y: 0, z: 0}
-      Axis:
-        x: 1
-        y: 1
-        z: 1
-      FunctionConstructor:
-        _functions: []
   _animations:
-  - {fileID: 11400000, guid: 933aecba5d5fbd5479680feb77967b77, type: 2}
+  - {fileID: 11400000, guid: 209a411fd6140a2468f77d081c9a985d, type: 2}
   - {fileID: 0}
   - {fileID: 0}
   _playOnAwake: 1
-  _playAwakeName: Cube Splat
+  _playAwakeName: Test
