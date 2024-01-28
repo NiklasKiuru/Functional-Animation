@@ -17,6 +17,7 @@ namespace Aikom.FunctionalAnimation
         private MatrixRxC<bool> _animationChecks;
         private Transform _target;
         private TimeKeeper _mainClock;
+        private bool _isActive;
 
         internal Interpolator<Vector3>[] VectorInterpolators { get => _vectorInterpolators; }
 
@@ -25,8 +26,14 @@ namespace Aikom.FunctionalAnimation
             _mainClock = new TimeKeeper(0);
         }
 
+        /// <summary>
+        /// Creates all interpolators for the current animation and activates the controller
+        /// </summary>
+        /// <param name="anim"></param>
+        /// <param name="target"></param>
         internal void SetAnimation(TransformAnimation anim, Transform target)
-        {
+        {   
+            _isActive = true;
             _animationChecks = anim.GetSelectionMatrix();
             _target = target;
             _axisInterpolators = new MatrixRxC<Interpolator<float>>(3, 3);
@@ -67,18 +74,90 @@ namespace Aikom.FunctionalAnimation
                     incrimentFunc = IncrimentSelected(funcs, prop);
                     
                 }
-
+                var duration = data.Sync? anim.Duration : data.Duration;
                 _vectorInterpolators[i] = new Interpolator<Vector3>(incrimentFunc, setValFunc, 
-                    1 / data.Duration, GetPropValue(prop), GetPropValue(prop) + data.Offset, data.TimeControl);
+                    1 / duration, GetPropValue(prop), GetPropValue(prop) + data.Offset, data.TimeControl);
             }
         }
 
-        public void Update()
-        {
+        /// <summary>
+        /// Updates the current animation
+        /// </summary>
+        internal void Update()
+        {   
+            if (!_isActive)
+                return;
+            int activeCount = 0;
             for(int i = 0; i < _vectorInterpolators.Length; i++)
             {
-                _vectorInterpolators[i]?.Run();
+                var interpolator = _vectorInterpolators[i];
+                if (interpolator == null || interpolator.InternalState == Interpolator<Vector3>.Status.Stopped)
+                    continue;
+                    
+                interpolator.Run();
+                activeCount++;
             }
+            _isActive = activeCount > 0;
+        }
+
+        /// <summary>
+        /// Resets the current animation
+        /// </summary>
+        internal void ResetCurrent()
+        {
+            for(int i = 0; i < _vectorInterpolators.Length; i++)
+            {   
+                var interpolator = _vectorInterpolators[i];
+                if(interpolator == null)
+                    continue;
+                interpolator.Reset();
+            }
+        }
+
+        /// <summary>
+        /// Resets current property values into initial state
+        /// </summary>
+        /// <param name="prop"></param>
+        internal void ResetProperty(TransformProperty prop)
+        {
+            if (_vectorInterpolators[(int)prop] == null)
+                return;
+            _vectorInterpolators[(int)prop].Reset();
+        }
+
+        /// <summary>
+        /// Overrides the runtime target value for a specific axis and property
+        /// If selected axis is the final axis, the value will be applied to all three dimensional axis
+        /// </summary>
+        /// <param name="prop"></param>
+        /// <param name="axis"></param>
+        /// <param name="value"></param>
+        public void OverrideTarget(TransformProperty prop, Axis axis, float value)
+        {
+            if (!_isActive || _animationChecks[(int)prop, (int)axis])
+            {   
+                if(axis == Axis.W)
+                {
+                    var vec = new Vector3(value, value, value);
+                    OverrideTarget(prop, vec);
+                    return;
+                }
+                var current = _vectorInterpolators[(int)prop].Target;
+                current[(int)axis] = value;
+                _vectorInterpolators[(int)prop].OverrideTarget(current, false);
+            }
+        }
+
+        /// <summary>
+        /// Overrides the runtime target value for a specific property as long as there is no axis separation
+        /// </summary>
+        /// <param name="prop"></param>
+        /// <param name="value"></param>
+        public void OverrideTarget(TransformProperty prop, Vector3 value)
+        {
+            if (!_isActive || _animationChecks[(int)prop, (int)Axis.W])
+                return;
+            _vectorInterpolators[(int)prop].OverrideTarget(value, false);
         }
 
         private Func<float, Vector3, Vector3, Vector3> IncrimentAll(Func<float, float> ease)
@@ -120,19 +199,25 @@ namespace Aikom.FunctionalAnimation
                 case TransformProperty.Position:
                     return (v) =>
                     {
-                        var vector = new Vector3(animateableAxis.x ? v.x : _target.localPosition.x, animateableAxis.y ? v.y : _target.localPosition.y, animateableAxis.z ? v.z : _target.localPosition.z);
+                        var vector = new Vector3(animateableAxis.x ? v.x : _target.localPosition.x, 
+                            animateableAxis.y ? v.y : _target.localPosition.y, 
+                            animateableAxis.z ? v.z : _target.localPosition.z);
                         _target.localPosition = vector;
                     };
                 case TransformProperty.Rotation:
                     return (v) =>
                     {
-                        var vector = new Vector3(animateableAxis.x ? v.x : _target.localRotation.eulerAngles.x, animateableAxis.y ? v.y : _target.localRotation.eulerAngles.y, animateableAxis.z ? v.z : _target.localRotation.eulerAngles.z);
+                        var vector = new Vector3(animateableAxis.x ? v.x : _target.localRotation.eulerAngles.x, 
+                            animateableAxis.y ? v.y : _target.localRotation.eulerAngles.y, 
+                            animateableAxis.z ? v.z : _target.localRotation.eulerAngles.z);
                         _target.localRotation = Quaternion.Euler(vector);
                     };
                 case TransformProperty.Scale:
                     return (v) =>
                     {
-                        var vector = new Vector3(animateableAxis.x ? v.x : _target.localScale.x, animateableAxis.y ? v.y : _target.localScale.y, animateableAxis.z ? v.z : _target.localScale.z);
+                        var vector = new Vector3(animateableAxis.x ? v.x : _target.localScale.x, 
+                            animateableAxis.y ? v.y : _target.localScale.y, 
+                            animateableAxis.z ? v.z : _target.localScale.z);
                         _target.localScale = vector;
                     };
             }

@@ -10,18 +10,29 @@ namespace Aikom.FunctionalAnimation
         [SerializeReference] private bool _playOnAwake;
         [SerializeReference] private string _playAwakeName;
 
-        private Dictionary<int, TransformAnimation> _atlas = new Dictionary<int, TransformAnimation>();
-        private EventContainer[] _eventContainer;
+        private Dictionary<int, RuntimeContainer> _atlas = new Dictionary<int, RuntimeContainer>();
         private RuntimeController _runtimeController = new();
+        private RuntimeContainer _currentAnimation;
+
+        public RuntimeController RuntimeController { get => _runtimeController; }
 
 
-        /// <summary>
-        /// Loads an animation from an animation object
-        /// </summary>
-        /// <param name="anim"></param>
-        internal void Load(TransformAnimation anim)
+        private void Load(RuntimeContainer cont)
         {
-            _runtimeController.SetAnimation(anim, transform);
+            SetBinding((i, c) => cont.EventContainer[i].UnBind(c));
+            _runtimeController.SetAnimation(cont.Animation, transform);
+            SetBinding((i, c) => cont.EventContainer[i].Bind(c));
+
+            void SetBinding(Action<int, Interpolator<Vector3>> bind)
+            {
+                for (int i = 0; i < 3; i++)
+                {
+                    if (_runtimeController.VectorInterpolators[i] == null)
+                        continue;
+                    bind(i, _runtimeController.VectorInterpolators[i]);
+                }
+            }
+            _currentAnimation = cont;
         }
 
         /// <summary>
@@ -41,19 +52,7 @@ namespace Aikom.FunctionalAnimation
         {
             if(_atlas.TryGetValue(hash, out var anim))
             {
-                SetBinding((i, c) => _eventContainer[i].UnBind(c));
                 Load(anim);
-                SetBinding((i, c) => _eventContainer[i].Bind(c));
-
-                void SetBinding(Action<int, Interpolator<Vector3>> bind)
-                {
-                    for(int i = 0; i < 3; i++)
-                    {
-                        if (_runtimeController.VectorInterpolators[i] == null)
-                            continue;
-                        bind(i, _runtimeController.VectorInterpolators[i]);
-                    }
-                }
             }    
         }
 
@@ -67,9 +66,28 @@ namespace Aikom.FunctionalAnimation
                 return;
             var hash = anim.name.GetHashCode();
             if(!_atlas.ContainsKey(hash))
-                _atlas.Add(hash, anim);
+                _atlas.Add(hash, new RuntimeContainer(anim));
             if(play)
                 Play(hash);
+        }
+
+        /// <summary>
+        /// Resets the currently playing animation
+        /// </summary>
+        public void ResetAnimation()
+        {
+            if (_currentAnimation != null)
+                _runtimeController.ResetCurrent();
+        }
+
+        /// <summary>
+        /// Resets current animations property into its initial values
+        /// </summary>
+        /// <param name="prop"></param>
+        public void ResetProperty(TransformProperty prop)
+        {
+            if(_currentAnimation != null)
+                _runtimeController.ResetProperty(prop);
         }
 
         private void Update()
@@ -79,75 +97,55 @@ namespace Aikom.FunctionalAnimation
 
         private void Awake()
         {   
-            InitializeEventContainers();
-            if (_playOnAwake && !string.IsNullOrEmpty(_playAwakeName))
-                Play(_playAwakeName);
-        }
-
-        protected void OnValidate()
-        {   
             _atlas.Clear();
-            if(_eventContainer == null)
-                InitializeEventContainers();
-
             for (int i = 0; i < _animations.Length; i++)
             {
                 if (_animations[i] == null)
                     continue;
-                _atlas.Add(_animations[i].name.GetHashCode(), _animations[i]);
+                _atlas.Add(_animations[i].name.GetHashCode(), new RuntimeContainer( _animations[i]));
             }
+
+            if (_playOnAwake && !string.IsNullOrEmpty(_playAwakeName))
+                Play(_playAwakeName);
         }
 
-        private void RegisterCallBack(int propContainerIndex, Action<Vector3> callback, EventType evt)
+
+        public void RegisterCallBack(TransformProperty prop, Action<Vector3> cb, EventType evt, int animationId)
         {
-            if(propContainerIndex < _eventContainer.Length && propContainerIndex > 0)
+            if(!_atlas.TryGetValue(animationId, out var cont))
+                return;
+            switch(evt)
             {
-                switch(evt)
-                {
-                    case EventType.OnValueChanged:
-                        _eventContainer[propContainerIndex].OnValueChanged += callback;
-                        break;
-                    case EventType.OnTargetReached:
-                        _eventContainer[propContainerIndex].OnTargetReached += callback;
-                        break;
-                    case EventType.OnStartReached:
-                        _eventContainer[propContainerIndex].OnStartReached += callback;
-                        break;
-                }
+                case EventType.OnStartReached:
+                    cont.EventContainer[(int)prop].OnStartReached += cb;
+                    break;
+                case EventType.OnTargetReached:
+                    cont.EventContainer[(int)prop].OnTargetReached += cb;
+                    break;
+                case EventType.OnValueChanged:
+                    cont.EventContainer[(int)prop].OnValueChanged += cb;
+                    break;
             }
         }
 
-        private void UnRegisterCallBack(int propContainerIndex, Action<Vector3> callback, EventType evt)
+        public void UnRegisterCallBack(TransformProperty prop, Action<Vector3> cb, EventType evt, int animationId)
         {
-            if(propContainerIndex < _eventContainer.Length && propContainerIndex > 0)
+            if (!_atlas.TryGetValue(animationId, out var cont))
+                return;
+            switch (evt)
             {
-                switch(evt)
-                {
-                    case EventType.OnValueChanged:
-                        _eventContainer[propContainerIndex].OnValueChanged -= callback;
-                        break;
-                    case EventType.OnTargetReached:
-                        _eventContainer[propContainerIndex].OnTargetReached -= callback;
-                        break;
-                    case EventType.OnStartReached:
-                        _eventContainer[propContainerIndex].OnStartReached -= callback;
-                        break;
-                }
+                case EventType.OnStartReached:
+                    cont.EventContainer[(int)prop].OnStartReached -= cb;
+                    break;
+                case EventType.OnTargetReached:
+                    cont.EventContainer[(int)prop].OnTargetReached -= cb;
+                    break;
+                case EventType.OnValueChanged:
+                    cont.EventContainer[(int)prop].OnValueChanged -= cb;
+                    break;
             }
         }
 
-        public void RegisterCallBack(TransformProperty prop, Action<Vector3> cb, EventType evt) => RegisterCallBack((int)prop, cb, evt);
-
-        public void UnRegisterCallBack(TransformProperty prop, Action<Vector3> cb, EventType evt) => UnRegisterCallBack((int)prop, cb, evt);
-
-        private void InitializeEventContainers()
-        {
-            _eventContainer = new EventContainer[3];
-            for (int i = 0; i < _eventContainer.Length; i++)
-            {
-                _eventContainer[i] = new EventContainer();
-            }
-        }
 
         /// <summary>
         /// Separate container for animation events. This has to exist due to the ability to switch animations in runtime
@@ -179,6 +177,23 @@ namespace Aikom.FunctionalAnimation
                 cont.OnStartReached += OnStartReached;
                 cont.OnTargetReached += OnTargetReached;
                 cont.OnValueChanged += OnValueChanged;
+            }
+        }
+
+        private class RuntimeContainer
+        {
+            public TransformAnimation Animation;
+            public EventContainer[] EventContainer;
+
+            public RuntimeContainer(TransformAnimation anim)
+            {
+                Animation = anim;
+                EventContainer = new EventContainer[3] 
+                { 
+                    new EventContainer(), 
+                    new EventContainer(), 
+                    new EventContainer() 
+                };
             }
         }
     }
