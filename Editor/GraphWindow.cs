@@ -4,6 +4,7 @@ using UnityEngine.UIElements;
 using System;
 using UnityEditor.UIElements;
 using Aikom.FunctionalAnimation.UI;
+using System.Runtime.InteropServices.WindowsRuntime;
 
 namespace Aikom.FunctionalAnimation.Editor
 {
@@ -49,6 +50,7 @@ namespace Aikom.FunctionalAnimation.Editor
             _renderElement.style.borderBottomWidth = new StyleFloat(2);
             _renderElement.style.borderLeftColor = new StyleColor(new Color(0.8f, 0.8f, 0.8f));
             _renderElement.style.borderBottomColor = new StyleColor(new Color(0.8f, 0.8f, 0.8f));
+            _renderElement.DrawProperty = _selectedProperty;
 
             if (EditorPrefs.HasKey("HeldAnimationPath"))
             {
@@ -171,7 +173,7 @@ namespace Aikom.FunctionalAnimation.Editor
             objField.objectType = typeof(TransformAnimation);
             var maxDuration = new FloatField("Max duration");
             
-            var propSelector = new EnumField("Target Property", TransformProperty.Position);
+            var propSelector = new EnumField("Target Property", _selectedProperty);
             var optionsContainer = new VisualElement();
             optionsContainer.style.flexDirection = FlexDirection.Column;
             optionsContainer.style.justifyContent = Justify.SpaceAround;
@@ -247,6 +249,7 @@ namespace Aikom.FunctionalAnimation.Editor
 
             // Register callbacks and set a fallback method for unbinds
             //Selection.selectionChanged += SetAnimatior;
+            _renderElement.CreateNodeMarkers();
             RegisterCallbacks();
             _unregisterCbs = UnRegisterCallbacks;
 
@@ -273,11 +276,12 @@ namespace Aikom.FunctionalAnimation.Editor
             void ChangeVertexCount(ChangeEvent<int> e) => _renderElement.SampleAmount = e.newValue;
             void ChangeGridLineCount(ChangeEvent<int> e) => _renderElement.GridLines = e.newValue;
 
+            // Animation callbacks
             void ChangeMaxDuration(ChangeEvent<float> e)
-            {
+            {   
                 if (_targetAnim == null)
                     return;
-                _targetAnim[_selectedProperty].Duration = e.newValue;
+                _targetAnim.Duration = e.newValue;
             }  
             
             void ChangeAnimate(ChangeEvent<bool> e)
@@ -625,13 +629,41 @@ namespace Aikom.FunctionalAnimation.Editor
             private VisualElement _dockWindow;
             private bool _isDragging = false;
 
+            /// <summary>
+            /// Maximum allowed grid lines
+            /// </summary>
             public static int MaxGridLines { get => c_maxGridLines; }
+
+            /// <summary>
+            /// Target animation this element draws the graph from
+            /// </summary>
             public TransformAnimation Animation { get; set; }
+
+            /// <summary>
+            /// Amount of times each graph function is sampled
+            /// </summary>
             public int SampleAmount { get => _sampleAmount; set => _sampleAmount = value; }
+
+            /// <summary>
+            /// Currently drawn gridlines
+            /// </summary>
             public int GridLines { get => _gridLines; set => _gridLines = value; }
+
+            /// <summary>
+            /// Time interval between each sample
+            /// </summary>
             public float MeasurementInterval { get => _measurementInterval; }
+
+            /// <summary>
+            /// Currently drawn property
+            /// </summary>
             public TransformProperty DrawProperty { get; set; }
 
+            /// <summary>
+            /// Base constructor
+            /// </summary>
+            /// <param name="lineMaterial"></param>
+            /// <param name="root"></param>
             public GraphRenderElement(Material lineMaterial, VisualElement root)
             {
                 _graphMaterial = lineMaterial;
@@ -667,15 +699,7 @@ namespace Aikom.FunctionalAnimation.Editor
                 CreateLegend("X", Color.red);
                 CreateLegend("Y", Color.green);
                 CreateLegend("Z", Color.blue);
-
-                for(int i = 0; i < _positionMarkers.Length; i++)
-                {
-                    var marker = new NodeElement();
-                    marker.RegisterCallback<MouseDownEvent>(OnDragStart);
-                    marker.RegisterCallback<MouseUpEvent>(OnDragEnd);
-                    _dockWindow.Add(marker);
-                    _positionMarkers[i] = marker;
-                }
+                CreateLegend("All", Color.white);
 
                 RegisterCallback<MouseMoveEvent>(OnMarkerElementPositionChanged);
                 RegisterCallback<MouseUpEvent>(OnDragEnd);
@@ -703,6 +727,7 @@ namespace Aikom.FunctionalAnimation.Editor
                 }
             }
 
+            // Destructor
             ~GraphRenderElement()
             {
                 for (int i = 0; i < _positionMarkers.Length; i++)
@@ -714,36 +739,31 @@ namespace Aikom.FunctionalAnimation.Editor
                 UnregisterCallback<MouseUpEvent>(OnDragEnd);
             }
 
-            private void OnMarkerElementPositionChanged(MouseMoveEvent evt)
+            protected override void ImmediateRepaint()
             {
-                if (!_isDragging || Animation == null || _activeDragElement == null)
-                    return;
-                var pos = _dockWindow.LocalToWorld(evt.mousePosition);
-                var graphPos = GetGraphPosition(pos);
-                var result = Animation.AnimationData[(int)DrawProperty][_activeDragElement.Axis].MoveTimelineNode(_activeDragElement.Index, graphPos);
-                var globalPos = GetAbsolutePos(result.x, result.y);
-                _activeDragElement.style.left = globalPos.x * _dockWindow.layout.width - (_activeDragElement.layout.width / 2);
-                _activeDragElement.style.bottom = globalPos.y * _dockWindow.layout.height - (_activeDragElement.layout.height / 2);
+                DrawGraph();
             }
 
-            private void OnDragStart(MouseDownEvent evt)
-            {   
-                if(evt.button != (int)MouseButton.LeftMouse)
-                    return;
-                if (evt.target is not NodeElement dragElement)
-                    return;
-                _activeDragElement = dragElement;
-                _isDragging = true;
+            #region Public Methods
+            /// <summary>
+            /// Creates initial node markers
+            /// </summary>
+            public void CreateNodeMarkers()
+            {
+                for (int i = 0; i < _positionMarkers.Length; i++)
+                {
+                    var marker = new NodeElement();
+                    marker.RegisterCallback<MouseDownEvent>(OnDragStart);
+                    marker.RegisterCallback<MouseUpEvent>(OnDragEnd);
+                    _root.Add(marker);
+                    _positionMarkers[i] = marker;
+                }
             }
 
-            private void OnDragEnd(MouseUpEvent evt)
-            {   
-                if(evt.button != (int)MouseButton.LeftMouse)
-                    return;
-                _activeDragElement = null;
-                _isDragging = false;
-            }
-
+            /// <summary>
+            /// Sets and activates the node markers for the given axis
+            /// </summary>
+            /// <param name="axis"></param>
             public void SetNodeMarkers(Axis axis)
             {
                 if (Animation == null)
@@ -767,22 +787,27 @@ namespace Aikom.FunctionalAnimation.Editor
                 }
             }
 
-            protected override void ImmediateRepaint()
+            
+            /// <summary>
+            /// Gets the position on the graph from the given panel position
+            /// </summary>
+            /// <param name="panelPositon"></param>
+            /// <returns></returns>
+            public Vector2 GetGraphPosition(Vector2 panelPositon)
             {
-                DrawGraph();
+                var graphPos = new Vector2(panelPositon.x / _dockWindow.layout.width, 1 - (panelPositon.y / _dockWindow.layout.height));
+                var newVec = new Vector2((graphPos.x - 0.2f) / 0.75f, (graphPos.y - 0.2f) / 0.7f);
+                return newVec;
             }
 
+            /// <summary>
+            /// Main method for drawing the graph
+            /// </summary>
             public void DrawGraph()
             {
                 if (Animation == null)
                     return;
                 
-                // **TEST**
-                //var methodInfo = Animator.GetType().GetMethods().Where(p => Attribute.IsDefined(p, typeof(GraphMethodAttribute))).FirstOrDefault();
-                //var attr = methodInfo.GetCustomAttributes(typeof(GraphMethodAttribute), false).FirstOrDefault();
-                //var name = (attr as GraphMethodAttribute).name;
-                //methodInfo.Invoke(Animator, new object[] { name });
-               
                 // Begin draw call
                 GL.PushMatrix();
                 _graphMaterial.SetPass(0);
@@ -804,8 +829,8 @@ namespace Aikom.FunctionalAnimation.Editor
                         DrawVertex(x, 1);
                         var timeMarker = _gridTimeMarkers[j - 1];
                         timeMarker.style.visibility = Visibility.Visible;
-                        //var duration = Animator.SyncAll? Animator.MaxDuration : 1f;
-                        timeMarker.text = (x).ToString("F2"); // * duration
+                        var duration = Animation[DrawProperty].Sync ? Animation.Duration : Animation[DrawProperty].Duration;
+                        timeMarker.text = (x * duration).ToString("F2");
 
                         timeMarker.style.left = x * layout.width * 0.935f - (timeMarker.layout.width / 2);
                         timeMarker.style.top = timeMarker.layout.height / 2;
@@ -825,60 +850,33 @@ namespace Aikom.FunctionalAnimation.Editor
                     else
                         DisableInactiveMarkers();
 
-                    var currentPositions = new Vector3[3];
-
-
                     var container = Animation.AnimationData[(int)DrawProperty];
+                    var axisCount = container.Length - 1;
+                    int startingPoint = 0;
+                    if (!container.SeparateAxis)
+                    {
+                        startingPoint = 3;
+                        axisCount++;
+                    }
+
+                    var currentPositions = new Vector3[axisCount - startingPoint];
                     _propertyName.text = DrawProperty.ToString();
                     
-                    for (int j = 0; j < 3; j++)
+                    while (startingPoint < axisCount)
                     {
-                        SetColor(j);
-                        var func = container.GenerateFunction((Axis)j);
+                        SetColor(startingPoint);
+                        var func = container.GenerateFunction((Axis)startingPoint);
                         float sampleInc = 1f / _sampleAmount;
                         _measurementInterval = sampleInc;
 
-                        // Unsyncronized time control
-                        //if (!Animation.SyncAll)
-                        //{
-                        //    for (int sample = 0; sample < _sampleAmount; sample++)
-                        //    {
-                        //        DrawVertexSingle(sample);
-                        //        DrawVertexSingle(sample + 1);
-                        //    }
                         //    //currentPositions[i] = GetAbsolutePos(container.Time, func(container.Time));
-                        //}
-                        // Syncronized time control. The time variables in the window are
-                        // not precise at all times but marker positions should be
 
-
-                        //float duration = container.TrimBack - container.TrimFront;
                         for (int sample = 0; sample < _sampleAmount; sample++)
                         {
                             DrawVertexSingle(sample);
                             DrawVertexSingle((sample + 1));
                         }
-
-                        //currentPositions[i] = GetAbsolutePos(Animation.Timer.Time, TrimValues(Animation.Timer.Time).y);
-
-                        //void DrawVertexTrimmed(float x)
-                        //{
-                        //    var vec = TrimValues(x);
-                        //    DrawVertex(vec.x, vec.y);
-                        //}
-
-                        //Vector2 TrimValues(float x)
-                        //{
-                        //    float y;
-                        //    if (x <= container.TrimFront)
-                        //        y = func.Invoke(0);
-                        //    else if (x >= container.TrimBack)
-                        //        y = func.Invoke(1);
-                        //    else
-                        //        y = func.Invoke((x - container.TrimFront) / duration);
-                        //    return new Vector2(x, y);
-                        //}
-
+                        startingPoint++;
 
                         Vector3 DrawVertexSingle(int index)
                         {
@@ -916,12 +914,12 @@ namespace Aikom.FunctionalAnimation.Editor
                 catch (Exception e)
                 {
                     GL.End();
-                    //GL.PopMatrix();
                     Debug.Log(e.Message);
                 }
                 GL.End();
                 GL.PopMatrix();
             }
+            #endregion
 
             private void SetColor(int index)
             {
@@ -954,36 +952,46 @@ namespace Aikom.FunctionalAnimation.Editor
                 _currentMarkers = _gridLines;
             }
 
-            /// <summary>
-            /// Draws a vertex on the graph panel and returns the absolute position of the vertex
-            /// </summary>
-            /// <param name="x"></param>
-            /// <param name="y"></param>
-            /// <returns></returns>
-            public Vector3 DrawVertex(float x, float y)
+            private Vector3 DrawVertex(float x, float y)
             {   
                 var pos = GetAbsolutePos(x, y);
                 GL.Vertex3(pos.x, pos.y, pos.z);
                 return pos;
             }
 
-            /// <summary>
-            /// Calculates the absolute position of a point on the graph panel
-            /// </summary>
-            /// <param name="x"></param>
-            /// <param name="y"></param>
-            /// <returns></returns>
             private Vector3 GetAbsolutePos(float x, float y) 
             {   
-
                 return new Vector3((x * 0.75f) + 0.2f, (y * 0.7f) + 0.2f, 0); 
             }
 
-            public Vector2 GetGraphPosition(Vector2 panelPositon)
+            private void OnMarkerElementPositionChanged(MouseMoveEvent evt)
             {
-                var graphPos = new Vector2(panelPositon.x / _dockWindow.layout.width, 1 - (panelPositon.y / _dockWindow.layout.height));
-                var newVec = new Vector2((graphPos.x - 0.2f) / 0.75f, (graphPos.y - 0.2f) / 0.7f);
-                return newVec;
+                if (!_isDragging || Animation == null || _activeDragElement == null)
+                    return;
+                var pos = _dockWindow.LocalToWorld(evt.mousePosition);
+                var graphPos = GetGraphPosition(pos);
+                var result = Animation.AnimationData[(int)DrawProperty][_activeDragElement.Axis].MoveTimelineNode(_activeDragElement.Index, graphPos);
+                var globalPos = GetAbsolutePos(result.x, result.y);
+                _activeDragElement.style.left = globalPos.x * _dockWindow.layout.width - (_activeDragElement.layout.width / 2);
+                _activeDragElement.style.bottom = globalPos.y * _dockWindow.layout.height - (_activeDragElement.layout.height / 2);
+            }
+
+            private void OnDragStart(MouseDownEvent evt)
+            {
+                if (evt.button != (int)MouseButton.LeftMouse)
+                    return;
+                if (evt.target is not NodeElement dragElement)
+                    return;
+                _activeDragElement = dragElement;
+                _isDragging = true;
+            }
+
+            private void OnDragEnd(MouseUpEvent evt)
+            {
+                if (evt.button != (int)MouseButton.LeftMouse)
+                    return;
+                _activeDragElement = null;
+                _isDragging = false;
             }
 
         }

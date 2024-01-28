@@ -9,7 +9,9 @@ namespace Aikom.FunctionalAnimation
     /// </summary>
     /// <typeparam name="T"></typeparam>
     public class Interpolator<T> where T : struct, IEquatable<T>
-    {
+    {   
+        public enum Status { Running, Stopped, Paused }
+
         // Private fields
         private T _target;
         private T _default;
@@ -39,6 +41,7 @@ namespace Aikom.FunctionalAnimation
         public int Direction { get { return _timer.Direction; } }
         public Func<float, T> Main { get => _mainFunction; }
         internal TimeKeeper Timer { get => _timer; }
+        public Status InternalState { get; private set; }
 
         /// <summary>
         /// Constructor
@@ -69,6 +72,20 @@ namespace Aikom.FunctionalAnimation
                     OnTargetReached?.Invoke(val);
                 return val;
             };
+
+            if(ctrl == TimeControl.OneShot)
+                OnTargetReached += SetStatus;
+        }
+
+        ~Interpolator()
+        {
+            OnTargetReached -= SetStatus;
+        }
+
+        private void SetStatus(T val)
+        {
+            if(_timer.Time == 1)
+                InternalState = Status.Stopped;
         }
 
         /// <summary>
@@ -162,6 +179,7 @@ namespace Aikom.FunctionalAnimation
             _mainFunction(0);
             if(_hasActiveRoutine)
                 StopRoutine();
+            InternalState = Status.Running;
         }
 
         /// <summary>

@@ -9,9 +9,7 @@ namespace Aikom.FunctionalAnimation
     /// Custom indexable n x m generic matrix
     /// </summary>
     /// <typeparam name="TData"></typeparam>
-    /// <typeparam name="TRowIndexer"></typeparam>
-    /// <typeparam name="TColumnIndexer"></typeparam>
-    public class MatrixRxC<TData>
+    public struct MatrixRxC<TData>
     {
         private TData[][] _data;
         private int _rows;
@@ -21,7 +19,9 @@ namespace Aikom.FunctionalAnimation
         public int Columns => _columns;
 
         public MatrixRxC(int rows, int columns)
-        {
+        {   
+            _rows = rows;
+            _columns = columns;
             _data = new TData[rows][];
             for (int i = 0; i < rows; i++)
             {
