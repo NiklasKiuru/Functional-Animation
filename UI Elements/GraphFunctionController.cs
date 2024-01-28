@@ -2,31 +2,33 @@ using Aikom.FunctionalAnimation.Utility;
 using System;
 using System.Collections.Generic;
 using UnityEditor.UIElements;
+using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace Aikom.FunctionalAnimation.UI
 {
-    public class GraphDebugWindow : VisualElement
+    public class GraphFunctionController : VisualElement
     {
         private List<FunctionSelectionField> _fields = new List<FunctionSelectionField>();
-        private IIndexable<GraphData> _source;
+        private IIndexable<GraphData, Axis> _source;
         private EnumField _selector;
-        private int _currentAxis;
+        private Axis _currentAxis;
 
-        public Axis CurrentAxis { get => (Axis)_currentAxis; }
-        public IIndexable<GraphData> Source { get => _source; }
+        public Axis CurrentAxis { get => _currentAxis; }
+        public IIndexable<GraphData, Axis> Source { get => _source; }
 
         public event Action<Axis> CurrentAxisChanged;
 
-        public GraphDebugWindow(IIndexable<GraphData> source, Enum usedType, int defaultIndex)
+        public GraphFunctionController(IIndexable<GraphData, Axis> source, Enum usedType, Axis defaultIndex)
         {   
             _currentAxis = defaultIndex;
             _source = source;
             style.flexDirection = FlexDirection.Column;
             style.marginTop = new StyleLength(new Length(10f, LengthUnit.Pixel));
 
-            var debugHeader = new Label("Debug");
-            _selector = new EnumField("Selected Axis", Axis.X);
+            var debugHeader = new Label("Change or remove functions");
+            debugHeader.style.marginBottom = new StyleLength(new Length(10f, LengthUnit.Pixel));
+            _selector = new EnumField("Selected Axis:", Axis.X);
             _selector.RegisterValueChangedCallback(UpdateWindow);
 
             Add(debugHeader);
@@ -34,7 +36,7 @@ namespace Aikom.FunctionalAnimation.UI
 
             for (int i = 0; i < source[defaultIndex].Functions.Length; i++)
             {    
-                var field = new FunctionSelectionField(i.ToString(), usedType);
+                var field = new FunctionSelectionField(i.ToString() + ".", usedType);
                 field.value = source[defaultIndex].Functions[i];
                 field.Index = i;
                 field.Parent = this;
@@ -43,16 +45,32 @@ namespace Aikom.FunctionalAnimation.UI
             }
         }
 
-        ~GraphDebugWindow()
+        ~GraphFunctionController()
         {
             _selector.UnregisterValueChangedCallback(UpdateWindow);
         }
 
-        public void UpdateWindow(ChangeEvent<Enum> evt)
+        private void UpdateWindow(ChangeEvent<Enum> evt)
         {
-            _currentAxis = (int)(Axis)evt.newValue;
+            _currentAxis = (Axis)evt.newValue;
             CurrentAxisChanged?.Invoke(CurrentAxis);
             Refresh();
+        }
+
+        public void LockSelector(Axis axis)
+        {   
+            _currentAxis = axis;
+            CurrentAxisChanged?.Invoke(CurrentAxis);
+            Refresh();
+            _selector.SetEnabled(false);
+        }
+
+        public void UnlockSelector(Axis defaultAxis)
+        {   
+            _currentAxis = defaultAxis;
+            CurrentAxisChanged?.Invoke(CurrentAxis);
+            Refresh();
+            _selector.SetEnabled(true);
         }
 
         private void UnregisterCallBacks()
@@ -79,7 +97,7 @@ namespace Aikom.FunctionalAnimation.UI
             _source[_currentAxis].Functions[field.Index] = value;
         }
 
-        public void OverrideTargetContainer(IIndexable<GraphData> source)
+        public void OverrideTargetContainer(IIndexable<GraphData, Axis> source)
         {
             _source = source;
             Refresh();
@@ -110,21 +128,27 @@ namespace Aikom.FunctionalAnimation.UI
         {   
             public int Index { get; set; }
             public Button RemoveButton { get; private set; }
-            public GraphDebugWindow Parent { get; set; }
+            public GraphFunctionController Parent { get; set; }
 
             public static event Action<Axis> OnFunctionRemovedInUI;
 
             public FunctionSelectionField(string label, Enum defaultValue) : base(label, defaultValue)
             {   
                 style.flexDirection = FlexDirection.Row;
+                labelElement.style.unityTextAlign = TextAnchor.MiddleCenter;
                 RemoveButton = new Button(OnRemoveButtonClicked);
                 RemoveButton.text = "Remove";
                 Add(RemoveButton);
             }
 
             public void OnRemoveButtonClicked()
-            {
-                Parent.Source[(int)Parent.CurrentAxis].RemoveFunction(Index);
+            {   
+                if(Index == 0 && Parent.Source[Parent.CurrentAxis].Functions.Length == 1)
+                {
+                    Debug.LogWarning("Cannot remove the only function in the array");
+                    return;
+                }
+                Parent.Source[Parent.CurrentAxis].RemoveFunction(Index);
                 OnFunctionRemovedInUI?.Invoke(Parent.CurrentAxis);
                 Parent.Refresh();
             }
