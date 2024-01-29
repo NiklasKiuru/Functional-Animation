@@ -1,0 +1,130 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b1417811ba15d2346a8ec491a6fe7450, type: 3}
+  m_Name: Cool Cube
+  m_EditorClassIdentifier: 
+  _duration: 4
+  _animationData:
+  - X:
+      _functions: 000000000000000000000000
+      _timeline:
+        _nodes:
+        - {x: 0, y: 0.4994709}
+        - {x: 0.25074446, y: 1}
+        - {x: 0.7493125, y: 0}
+        - {x: 1, y: 0.4973545}
+    Y:
+      _functions: 0000000000000000
+      _timeline:
+        _nodes:
+        - {x: 0, y: 0}
+        - {x: 0.50037986, y: 1}
+        - {x: 1, y: 0}
+    Z:
+      _functions: 00000000
+      _timeline:
+        _nodes:
+        - {x: 0, y: 0}
+        - {x: 1, y: 1}
+    W:
+      _functions: 00000000
+      _timeline:
+        _nodes:
+        - {x: 0, y: 0}
+        - {x: 1, y: 1}
+    Target: {x: 0, y: 0, z: 0}
+    Offset: {x: 5, y: 5, z: 0}
+    Animate: 1
+    Sync: 1
+    SeparateAxis: 1
+    Duration: 0
+    TimeControl: 0
+    AnimateableAxis:
+      x: 1
+      y: 1
+      z: 0
+  - X:
+      _functions: 05000000000000000500000000000000
+      _timeline:
+        _nodes:
+        - {x: 0, y: 0}
+        - {x: 0.25074446, y: 1}
+        - {x: 0.5, y: 1}
+        - {x: 0.7500558, y: 0}
+        - {x: 1, y: 0}
+    Y:
+      _functions: 00000000050000000000000005000000
+      _timeline:
+        _nodes:
+        - {x: 0, y: 0}
+        - {x: 0.2483835, y: 0.0021163907}
+        - {x: 0.49959126, y: 1}
+        - {x: 0.7500558, y: 1}
+        - {x: 1, y: 0}
+    Z:
+      _functions: 00000000
+      _timeline:
+        _nodes:
+        - {x: 0, y: 0}
+        - {x: 1, y: 1}
+    W:
+      _functions: 00000000
+      _timeline:
+        _nodes:
+        - {x: 0, y: 0}
+        - {x: 1, y: 1}
+    Target: {x: 0, y: 0, z: 0}
+    Offset: {x: 90, y: 90, z: 180}
+    Animate: 1
+    Sync: 1
+    SeparateAxis: 1
+    Duration: 0
+    TimeControl: 0
+    AnimateableAxis:
+      x: 1
+      y: 1
+      z: 1
+  - X:
+      _functions: 00000000
+      _timeline:
+        _nodes:
+        - {x: 0, y: 0}
+        - {x: 1, y: 1}
+    Y:
+      _functions: 00000000
+      _timeline:
+        _nodes:
+        - {x: 0, y: 0}
+        - {x: 1, y: 1}
+    Z:
+      _functions: 00000000
+      _timeline:
+        _nodes:
+        - {x: 0, y: 0}
+        - {x: 1, y: 1}
+    W:
+      _functions: 00000000
+      _timeline:
+        _nodes:
+        - {x: 0, y: 0}
+        - {x: 1, y: 1}
+    Target: {x: 0, y: 0, z: 0}
+    Offset: {x: 0, y: 0, z: 0}
+    Animate: 1
+    Sync: 0
+    SeparateAxis: 1
+    Duration: 0
+    TimeControl: 0
+    AnimateableAxis:
+      x: 1
+      y: 1
+      z: 1

@@ -12,11 +12,15 @@ namespace Aikom.FunctionalAnimation.UI
         public NodeElement()
         {
             style.backgroundColor = new StyleColor(Color.white);
-            style.width = new StyleLength(new Length(7f, LengthUnit.Pixel));
-            style.height = new StyleLength(new Length(7f, LengthUnit.Pixel));
+            style.width = new StyleLength(new Length(8f, LengthUnit.Pixel));
+            style.height = new StyleLength(new Length(8f, LengthUnit.Pixel));
             style.flexGrow = 0;
             style.position = Position.Absolute;
             style.visibility = Visibility.Hidden;
+            style.borderBottomLeftRadius = new StyleLength(4f);
+            style.borderBottomRightRadius = new StyleLength(4f);
+            style.borderTopLeftRadius = new StyleLength(4f);
+            style.borderTopRightRadius = new StyleLength(4f);
             RegisterCallback<MouseEnterEvent>(OnMouseEnter);
             RegisterCallback<MouseLeaveEvent>(OnMouseLeave);
         }

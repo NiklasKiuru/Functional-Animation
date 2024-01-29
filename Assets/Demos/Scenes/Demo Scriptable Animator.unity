@@ -737,7 +737,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1409497918}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 8.25, y: 5, z: 0}
+  m_LocalPosition: {x: 4.29, y: 1.59, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -757,8 +757,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _animations:
-  - {fileID: 11400000, guid: 209a411fd6140a2468f77d081c9a985d, type: 2}
+  - {fileID: 11400000, guid: eafa1949d16056d46a2ab8cc2f829aa8, type: 2}
   - {fileID: 0}
   - {fileID: 0}
   _playOnAwake: 1
-  _playAwakeName: Test
+  _playAwakeName: Cool Cube

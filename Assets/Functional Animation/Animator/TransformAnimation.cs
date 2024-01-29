@@ -15,7 +15,7 @@ namespace Aikom.FunctionalAnimation
 
         public AnimationData[] AnimationData => _animationData;
         public int Length => 3;
-        public AnimationData this[TransformProperty index] { get => _animationData[(int)index]; set => _animationData[(int)index] = value; }
+        public AnimationData this[TransformProperty index] { get => _animationData[(int)index]; }
         public float Duration { get => _duration; internal set => _duration = value; }
 
         public static TransformAnimation SaveNew(string savePath)
