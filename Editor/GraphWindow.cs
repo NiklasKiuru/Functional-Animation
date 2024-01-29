@@ -44,12 +44,12 @@ namespace Aikom.FunctionalAnimation.Editor
             var material = AssetDatabase.LoadAssetAtPath<Material>("Assets/UI/GraphMaterial.mat");
             _renderElement = new GraphRenderElement(material, root);
             _renderElement.style.width = new StyleLength(new Length(80f, LengthUnit.Percent));
-            _renderElement.style.height = new StyleLength(new Length(80f, LengthUnit.Percent));
+            _renderElement.style.height = new StyleLength(new Length(100f, LengthUnit.Percent));
             _renderElement.style.backgroundColor = new StyleColor(new Color(0.2f, 0.2f, 0.2f));
             _renderElement.style.borderLeftWidth = new StyleFloat(2);
-            _renderElement.style.borderBottomWidth = new StyleFloat(2);
+            //_renderElement.style.borderBottomWidth = new StyleFloat(2);
             _renderElement.style.borderLeftColor = new StyleColor(new Color(0.8f, 0.8f, 0.8f));
-            _renderElement.style.borderBottomColor = new StyleColor(new Color(0.8f, 0.8f, 0.8f));
+            //_renderElement.style.borderBottomColor = new StyleColor(new Color(0.8f, 0.8f, 0.8f));
             _renderElement.DrawProperty = _selectedProperty;
 
             if (EditorPrefs.HasKey("HeldAnimationPath"))
@@ -249,7 +249,7 @@ namespace Aikom.FunctionalAnimation.Editor
 
             // Register callbacks and set a fallback method for unbinds
             //Selection.selectionChanged += SetAnimatior;
-            _renderElement.CreateNodeMarkers();
+            //_renderElement.CreateNodeMarkers();
             RegisterCallbacks();
             _unregisterCbs = UnRegisterCallbacks;
 
@@ -618,8 +618,8 @@ namespace Aikom.FunctionalAnimation.Editor
             private Material _graphMaterial;
             private int _sampleAmount = 1000;
             private int _gridLines = 10;
-            private Label[] _gridMarkers = new Label[c_maxGridLines];
-            private Label[] _gridTimeMarkers = new Label[c_maxGridLines];
+            private Label[] _gridMarkers = new Label[c_maxGridLines + 1];
+            private Label[] _gridTimeMarkers = new Label[c_maxGridLines + 1];
             private int _currentMarkers = 0;
             private float _measurementInterval;
             private Label _propertyName;
@@ -669,7 +669,7 @@ namespace Aikom.FunctionalAnimation.Editor
                 _graphMaterial = lineMaterial;
                 _root = root;
                 _dockWindow = root.parent;
-                for(int i = 0; i < c_maxGridLines; i++)
+                for(int i = 0; i <= c_maxGridLines; i++)
                 {
                     Add(_gridMarkers[i] = CreateLabel());
                     Add(_gridTimeMarkers[i] = CreateLabel());
@@ -700,9 +700,11 @@ namespace Aikom.FunctionalAnimation.Editor
                 CreateLegend("Y", Color.green);
                 CreateLegend("Z", Color.blue);
                 CreateLegend("All", Color.white);
-
+                CreateNodeMarkers();
                 RegisterCallback<MouseMoveEvent>(OnMarkerElementPositionChanged);
                 RegisterCallback<MouseUpEvent>(OnDragEnd);
+
+
 
                 void CreateLegend(string name, Color legendColor)
                 {
@@ -748,14 +750,14 @@ namespace Aikom.FunctionalAnimation.Editor
             /// <summary>
             /// Creates initial node markers
             /// </summary>
-            public void CreateNodeMarkers()
+            private void CreateNodeMarkers()
             {
                 for (int i = 0; i < _positionMarkers.Length; i++)
                 {
                     var marker = new NodeElement();
                     marker.RegisterCallback<MouseDownEvent>(OnDragStart);
                     marker.RegisterCallback<MouseUpEvent>(OnDragEnd);
-                    _root.Add(marker);
+                    Add(marker);
                     _positionMarkers[i] = marker;
                 }
             }
@@ -773,15 +775,17 @@ namespace Aikom.FunctionalAnimation.Editor
 
                 var axisColor = GetAxisColor(axis);
                 var activeMarkers = 0;
-                var container = Animation.AnimationData[(int)DrawProperty];
+                var container = Animation[DrawProperty];
                 var nodes = container[axis].Nodes;
                 foreach(var node in nodes)
                 {
                     var pos = GetAbsolutePos(node.x, node.y);
+                    pos = new Vector2(pos.x * _dockWindow.layout.width, pos.y * _dockWindow.layout.height);
+                    pos = this.WorldToLocal(pos);
                     var marker = _positionMarkers[activeMarkers];
                     marker.style.visibility = Visibility.Visible;
-                    marker.style.left = pos.x * _dockWindow.layout.width - (marker.layout.width / 2);
-                    marker.style.bottom = pos.y * _dockWindow.layout.height - (marker.layout.height / 2);
+                    marker.style.left = pos.x - (marker.layout.width / 2) - 2;
+                    marker.style.bottom = pos.y + (marker.layout.height / 2) + 10;
                     marker.Activate(activeMarkers, axisColor, axis);
                     activeMarkers++;
                 }
@@ -796,7 +800,7 @@ namespace Aikom.FunctionalAnimation.Editor
             public Vector2 GetGraphPosition(Vector2 panelPositon)
             {
                 var graphPos = new Vector2(panelPositon.x / _dockWindow.layout.width, 1 - (panelPositon.y / _dockWindow.layout.height));
-                var newVec = new Vector2((graphPos.x - 0.2f) / 0.75f, (graphPos.y - 0.2f) / 0.7f);
+                var newVec = new Vector2((graphPos.x - 0.23f) / 0.73f, (graphPos.y - 0.1f) / 0.8f);
                 return newVec;
             }
 
@@ -820,32 +824,37 @@ namespace Aikom.FunctionalAnimation.Editor
                     // resizing the window
                     GL.Color(new Color(1, 1, 1, 0.2f));
                     var interval = 1f / _gridLines;
-                    for (int j = 1; j <= _gridLines; j++)
+                    for (int j = 0; j <= _gridLines; j++)
                     {
                         float x = j * interval;
 
                         // X-axis
                         DrawVertex(x, 0);
-                        DrawVertex(x, 1);
-                        var timeMarker = _gridTimeMarkers[j - 1];
+                        var posX = DrawVertex(x, 1);
+                        var timeMarker = _gridTimeMarkers[j];
                         timeMarker.style.visibility = Visibility.Visible;
                         var duration = Animation[DrawProperty].Sync ? Animation.Duration : Animation[DrawProperty].Duration;
                         timeMarker.text = (x * duration).ToString("F2");
 
-                        timeMarker.style.left = x * layout.width * 0.935f - (timeMarker.layout.width / 2);
+                        posX = new Vector2(posX.x * _dockWindow.layout.width, posX.y * _dockWindow.layout.height);
+                        posX = this.WorldToLocal(posX);
+                        timeMarker.style.left = posX.x - (timeMarker.layout.width / 2);
                         timeMarker.style.top = timeMarker.layout.height / 2;
 
                         // Y-axis
                         DrawVertex(0, x);
-                        DrawVertex(1, x);
-                        var gridMarker = _gridMarkers[j - 1];
+                        var posY = DrawVertex(1, x);
+                        var gridMarker = _gridMarkers[j];
                         gridMarker.style.visibility = Visibility.Visible;
                         gridMarker.text = (x).ToString("F2");
+
+                        posY = new Vector2(posY.x * _dockWindow.layout.width, posY.y * _dockWindow.layout.height);
+                        posY = this.WorldToLocal(posY);
                         gridMarker.style.left = layout.width - gridMarker.layout.width * 2.5f;
-                        gridMarker.style.bottom = x * layout.height * 0.9f - (gridMarker.layout.height / 2);
+                        gridMarker.style.bottom = posY.y + (gridMarker.layout.height / 2);
                     }
 
-                    if (_gridLines > _currentMarkers)
+                    if (_gridLines >= _currentMarkers)
                         _currentMarkers = _gridLines;
                     else
                         DisableInactiveMarkers();
@@ -961,19 +970,21 @@ namespace Aikom.FunctionalAnimation.Editor
 
             private Vector3 GetAbsolutePos(float x, float y) 
             {   
-                return new Vector3((x * 0.75f) + 0.2f, (y * 0.7f) + 0.2f, 0); 
+                return new Vector3((x * 0.73f) + 0.23f, (y * 0.8f) + 0.1f, 0); 
             }
 
             private void OnMarkerElementPositionChanged(MouseMoveEvent evt)
             {
                 if (!_isDragging || Animation == null || _activeDragElement == null)
                     return;
-                var pos = _dockWindow.LocalToWorld(evt.mousePosition);
-                var graphPos = GetGraphPosition(pos);
+                var graphPos = GetGraphPosition(evt.mousePosition);
                 var result = Animation.AnimationData[(int)DrawProperty][_activeDragElement.Axis].MoveTimelineNode(_activeDragElement.Index, graphPos);
-                var globalPos = GetAbsolutePos(result.x, result.y);
-                _activeDragElement.style.left = globalPos.x * _dockWindow.layout.width - (_activeDragElement.layout.width / 2);
-                _activeDragElement.style.bottom = globalPos.y * _dockWindow.layout.height - (_activeDragElement.layout.height / 2);
+                var newGraphPos = GetAbsolutePos(result.x, result.y);
+                var globalPos = new Vector2(newGraphPos.x * _dockWindow.layout.width, newGraphPos.y * _dockWindow.layout.height);
+                globalPos = this.WorldToLocal(globalPos);
+
+                _activeDragElement.style.left = globalPos.x - (_activeDragElement.layout.width / 2) - 2;
+                _activeDragElement.style.bottom = globalPos.y + (_activeDragElement.layout.height / 2) + 10;
             }
 
             private void OnDragStart(MouseDownEvent evt)
