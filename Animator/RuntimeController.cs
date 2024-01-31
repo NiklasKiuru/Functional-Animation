@@ -74,9 +74,13 @@ namespace Aikom.FunctionalAnimation
                     incrimentFunc = IncrimentSelected(funcs, prop);
                     
                 }
+
+                var start = data.Mode == AnimationMode.Relative ? GetPropValue(prop) : data.Start;
+                var end = data.Mode == AnimationMode.Relative ? GetPropValue(prop) + data.Offset : data.Target;
+
                 var duration = data.Sync? anim.Duration : data.Duration;
                 _vectorInterpolators[i] = new Interpolator<Vector3>(incrimentFunc, setValFunc, 
-                    1 / duration, GetPropValue(prop), GetPropValue(prop) + data.Offset, data.TimeControl);
+                    1 / duration, start, end, data.TimeControl);
             }
         }
 

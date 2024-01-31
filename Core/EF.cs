@@ -210,32 +210,6 @@ namespace Aikom.FunctionalAnimation
         }
 
         /// <summary>
-        /// Interpolates between given structs with defined easing function
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="easing"></param>
-        /// <param name="origin"></param>
-        /// <param name="target"></param>
-        /// <param name="time"></param>
-        /// <returns></returns>
-        public static T Interpolate<T, D>(Function easing, T origin, D target, float time)
-            where T : struct, IInterpolateable<T>
-            where D : struct, IInterpolateable<T>
-        {
-            var originInputs = origin.Deconstruct();
-            var targetInputs = target.Deconstruct();
-            if (originInputs.Length != targetInputs.Length)
-                throw new Exception("Default deconstructors of IInterpolateable objects have invalid array size");
-
-            var values = new float[originInputs.Length];
-            for (int i = 0; i < originInputs.Length; i++)
-            {
-                values[i] = Interpolate(easing, originInputs[i], targetInputs[i], time);
-            }
-            return origin.ReConstruct<T>(values, origin);
-        }
-
-        /// <summary>
         /// Interpolates between start and end using a defined easing function
         /// </summary>
         /// <param name="easing"></param>
