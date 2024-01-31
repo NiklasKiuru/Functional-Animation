@@ -6,7 +6,7 @@ using UnityEngine;
 namespace Aikom.FunctionalAnimation
 {
     [Serializable]
-    public class AnimationData : IIndexable<GraphData, Axis>
+    public class AnimationData : ICustomIndexable<GraphData, Axis>
     {
         // X-Axis modulation
         public GraphData X;
@@ -20,6 +20,8 @@ namespace Aikom.FunctionalAnimation
         // Unseparated axis modulation
         public GraphData W;
 
+        public AnimationMode Mode;
+        public Vector3 Start;
         public Vector3 Target;
         public Vector3 Offset;
         public bool Animate;
@@ -101,6 +103,18 @@ namespace Aikom.FunctionalAnimation
                         throw new System.IndexOutOfRangeException();
                 }
             }
+        }
+
+        public int GetIndexer(Axis index)
+        {
+            return index switch
+            {
+                Axis.X => 0,
+                Axis.Y => 1,
+                Axis.Z => 2,
+                Axis.W => 3,
+                _ => throw new System.IndexOutOfRangeException(),
+            };
         }
 
         public AnimationData()

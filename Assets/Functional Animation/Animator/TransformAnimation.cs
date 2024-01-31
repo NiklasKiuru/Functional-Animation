@@ -1,23 +1,26 @@
 using UnityEngine;
+#if UNITY_EDITOR
 using UnityEditor;
+#endif
 using Aikom.FunctionalAnimation.Utility;
 
 namespace Aikom.FunctionalAnimation
-{   
+{
     /// <summary>
     /// Data for animations
     /// </summary>
-    public class TransformAnimation : ScriptableObject, IIndexable<AnimationData, TransformProperty>
+    public class TransformAnimation : ScriptableObject, ICustomIndexable<AnimationData, TransformProperty>
     {
         // **WARNING** Modifying this class can and will most likely wipe all existing animation data in the project
         [SerializeField] private float _duration;
         [SerializeField] private AnimationData[] _animationData = new AnimationData[3];
 
-        public AnimationData[] AnimationData => _animationData;
         public int Length => 3;
-        public AnimationData this[TransformProperty index] { get => _animationData[(int)index]; }
+        public AnimationData this[TransformProperty index] { get => this[GetIndexer(index)]; }
         public float Duration { get => _duration; internal set => _duration = value; }
+        public AnimationData this[int index] { get => _animationData[index]; }
 
+#if UNITY_EDITOR
         public static TransformAnimation SaveNew(string savePath)
         {
             var asset = CreateInstance<TransformAnimation>();
@@ -31,6 +34,11 @@ namespace Aikom.FunctionalAnimation
             return asset;
         }
 
+#endif
+        /// <summary>
+        /// Gets the selection matrix for the animation
+        /// </summary>
+        /// <returns></returns>
         public MatrixRxC<bool> GetSelectionMatrix()
         {
             var mat = new MatrixRxC<bool>(3, 4);
@@ -49,6 +57,21 @@ namespace Aikom.FunctionalAnimation
                 }
             }
             return mat;
+        }
+
+        public int GetIndexer(TransformProperty index)
+        {
+            switch (index)
+            {
+                case TransformProperty.Position:
+                    return 0;
+                case TransformProperty.Rotation:
+                    return 1;
+                case TransformProperty.Scale:
+                    return 2;
+                default:
+                    throw new System.IndexOutOfRangeException();
+            }
         }
     }
 
