@@ -1,6 +1,7 @@
 using Aikom.FunctionalAnimation.Utility;
 using System.Collections;
 using System.Collections.Generic;
+using Unity.Burst;
 using UnityEngine;
 
 namespace Aikom.FunctionalAnimation
@@ -9,7 +10,7 @@ namespace Aikom.FunctionalAnimation
     /// Custom indexable n x m generic matrix
     /// </summary>
     /// <typeparam name="TData"></typeparam>
-    public struct MatrixRxC<TData>
+    public struct MatrixRxC<TData> where TData : struct
     {
         private TData[][] _data;
         private int _rows;
@@ -53,6 +54,16 @@ namespace Aikom.FunctionalAnimation
             {
                 _data[i][column] = data[i];
             }
+        }
+
+        public TData[] GetColumn(int column)
+        {
+            var data = new TData[_rows];
+            for (int i = 0; i < _rows; i++)
+            {
+                data[i] = _data[i][column];
+            }
+            return data;
         }
     }
 }

@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.CompilerServices;
+using Unity.Burst;
 using Unity.Mathematics;
 using UnityEngine;
 
@@ -9,40 +10,56 @@ namespace Aikom.FunctionalAnimation
     /// Collection of interpolation and easing functions
     /// Credits to easings.net for some of the basic easing functions
     /// </summary>
+    [BurstCompile]
     public struct EF
     {
         #region Easing functions
 
+        public delegate float EasingFunctionDelegate(float x);
+
+        [BurstCompile]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static float Linear(float x)
+        {
+            return x;
+        }
+
+        [BurstCompile]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float EaseInSine(float x)
         {
             return 1 - Mathf.Cos((x * Mathf.PI) / 2);
         }
 
+        [BurstCompile]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float EaseOutSine(float x)
         {
             return Mathf.Sin((x * Mathf.PI) / 2);
         }
 
+        [BurstCompile]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float EaseInOutSine(float x)
         {
             return -(Mathf.Cos(Mathf.PI * x) - 1) / 2;
         }
 
+        [BurstCompile]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float EaseInExp(float x)
         {
             return x == 0 ? 0 : Mathf.Pow(2, 10 * x - 10);
         }
 
+        [BurstCompile]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float EaseOutExp(float x)
         {
             return x == 1 ? 1 : 1 - Mathf.Pow(2, -10 * x);
         }
 
+        [BurstCompile]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float EaseInOutExp(float x)
         {
@@ -52,12 +69,14 @@ namespace Aikom.FunctionalAnimation
                 (2 - Mathf.Pow(2, -20 * x + 10)) / 2;
         }
 
+        [BurstCompile]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float EaseInBounce(float x)
         {
             return 1 - EaseOutBounce(1 - x);
         }
 
+        [BurstCompile]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float EaseOutBounce(float x)
         {
@@ -79,24 +98,28 @@ namespace Aikom.FunctionalAnimation
             }
         }
 
+        [BurstCompile]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float EaseInOutBounce(float x)
         {
             return x < 0.5f ? (1 - EaseOutBounce(1 - 2 * x)) / 2 : (1 + EaseOutBounce(2 * x - 1)) / 2;
         }
 
+        [BurstCompile]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float EaseInElastic(float x)
         {
             return Mathf.Sin(13 * Mathf.PI / 2 * x) * Mathf.Pow(2, 10 * x - 10);
         }
 
+        [BurstCompile]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float EaseOutElastic(float x)
         {
             return Mathf.Sin(-13 * Mathf.PI / 2 * (x + 1)) * Mathf.Pow(2, -10 * x) + 1;
         }
 
+        [BurstCompile]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float EaseInOutElastic(float x)
         {
@@ -104,36 +127,42 @@ namespace Aikom.FunctionalAnimation
                 Mathf.Sin(-13 * Mathf.PI / 2 * (2 * x - 1 + 1)) * Mathf.Pow(2, -10 * (2 * x - 1)) / 2 + 1;
         }
 
+        [BurstCompile]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float EaseInCirc(float x)
         {
             return 1 - Mathf.Sqrt(1 - Mathf.Pow(x, 2));
         }
 
+        [BurstCompile]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float EaseOutCirc(float x)
         {
             return Mathf.Sqrt(1 - Mathf.Pow(x - 1, 2));
         }
 
+        [BurstCompile]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float EaseInOutCirc(float x)
         {
             return x < 0.5f ? (1 - Mathf.Sqrt(1 - Mathf.Pow(2 * x, 2))) / 2 : (Mathf.Sqrt(1 - Mathf.Pow(-2 * x + 2, 2)) + 1) / 2;
         }
 
+        [BurstCompile]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float EaseInBack(float x)
         {
             return 2.70158f * x * x * x - 1.70158f * x * x;
         }
 
+        [BurstCompile]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float EaseOutBack(float x)
         {
             return 1 + 2.70158f * Mathf.Pow(x - 1, 3) + 1.70158f * Mathf.Pow(x - 1, 2);
         }
 
+        [BurstCompile]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float EaseInOutBack(float x)
         {

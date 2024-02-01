@@ -115,6 +115,15 @@ namespace Aikom.FunctionalAnimation
                 Play(_playAwakeName);
         }
 
+        private void OnDisable()
+        {
+            _runtimeController.Dispose();
+        }
+
+        private void LateUpdate()
+        {
+            _runtimeController.ApplyTransformations();
+        }
 
         public void RegisterCallBack(TransformProperty prop, Action<Vector3> cb, EventType evt, int animationId)
         {
