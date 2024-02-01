@@ -9,12 +9,14 @@ public class StressTest : MonoBehaviour
     [SerializeField] private int _count = 1000;
     [SerializeField] private float _radius = 5f;
     [SerializeField] private Vector3 _startPos = Vector3.zero;
+
+    // **TEST**
     [SerializeField] private GraphData _graphData;
+    [SerializeField] private ScriptableTransformAnimator _animator;
 
     private void Start()
     {   
         int rowSize = Mathf.CeilToInt(Mathf.Sqrt(_count));
-        
 
         for (int i = 0; i < rowSize; i++)
         {   
@@ -22,8 +24,11 @@ public class StressTest : MonoBehaviour
             for (int j = 0; j < rowSize; j++)
             {
                 float x = _startPos.x + j * _radius;
-                Instantiate(_cubePrefab, new Vector3(x, y, 0), Quaternion.identity);
+                var copy = Instantiate(_cubePrefab, new Vector3(x, y, 0), Quaternion.identity);
+                _animator.AddGroupTarget(copy.transform);
             }
         }
+
+        _animator.Play("Cool Cube");
     }
 }

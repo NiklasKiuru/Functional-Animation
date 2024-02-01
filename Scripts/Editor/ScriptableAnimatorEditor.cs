@@ -46,6 +46,7 @@ namespace Aikom.FunctionalAnimation.Editor
 
                 EditorGUI.indentLevel--;
             }
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_targets"), true);
 
             serializedObject.ApplyModifiedProperties();
         }

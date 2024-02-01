@@ -166,7 +166,7 @@ namespace Aikom.FunctionalAnimation
 
         private Func<float, Vector3, Vector3, Vector3> IncrimentAll(Func<float, float> ease)
         {
-            return (t, start, end) => UnityExtensions.Interpolate(ease, start, end, t);
+            return (t, start, end) => EF.Interpolate(ease, start, end, t);
         }
 
         private Func<float, Vector3, Vector3, Vector3> IncrimentSelected(Func<float, float>[] easingFuncs, TransformProperty prop)
