@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Unity.Burst;
 using UnityEngine;
 
 namespace Aikom.FunctionalAnimation
@@ -64,6 +65,20 @@ namespace Aikom.FunctionalAnimation
                 }
                 return funcs[(int)count - 1](t);
             };
+        }
+
+        /// <summary>
+        /// Returns a pointer array of the functions in this graph data
+        /// </summary>
+        /// <returns></returns>
+        public FunctionPointer<EF.EasingFunctionDelegate>[] GetPointerArray()
+        {   
+            var array = new FunctionPointer<EF.EasingFunctionDelegate>[_functions.Length];
+            for (int i = 0; i < _functions.Length; i++)
+            {
+                array[i] = EditorFunctions.Pointers[_functions[i]];
+            }
+            return array;
         }
 
         /// <summary>

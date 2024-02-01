@@ -2,8 +2,11 @@ using Aikom.FunctionalAnimation;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using Unity.Collections;
+using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
+using UnityEngine.Jobs;
 
 public class MultiTargetContoller
 {
@@ -18,6 +21,14 @@ public class MultiTargetContoller
     private bool _isActive;
     private TransformAnimation _data;
     private TransformGroup _transformGroup;
+    private MultiTransformInterpolationJob _job;
+    private NativeArray<float3> _positionOffsets;
+    private NativeArray<float3> _rotationOffsets;
+    private NativeArray<float3> _scaleOffsets;
+    private NativeArray<float3> _currentValues;
+    private NativeArray<float3> _originValues;
+    private TransformAccessArray _transformAccessArray;
+    private JobHandle _jobHandle;
 
     internal Interpolator<Vector3>[] VectorInterpolators { get => _vectorInterpolators; }
 
@@ -27,10 +38,50 @@ public class MultiTargetContoller
     /// <param name="anim"></param>
     /// <param name="target"></param>
     internal void SetAnimation(TransformAnimation anim, Transform target, List<Transform> group)
-    {
+    {   
+        TransformAccessArray.Allocate(group.Count, 16, out _transformAccessArray);
+        for(int i = 0; i < group.Count; i++)
+        {
+            _transformAccessArray.Add(group[i]);
+        }
+        _positionOffsets = new NativeArray<float3>(group.Count, Allocator.Persistent);
+        _rotationOffsets = new NativeArray<float3>(group.Count, Allocator.Persistent);
+        _scaleOffsets = new NativeArray<float3>(group.Count, Allocator.Persistent);
+        _currentValues = new NativeArray<float3>(3, Allocator.Persistent);
+        _originValues = new NativeArray<float3>(3, Allocator.Persistent);
+        _originValues[0] = target.localPosition;
+        _originValues[1] = target.localRotation.eulerAngles;
+        _originValues[2] = target.localScale;
+
+        for(int i = 0; i < group.Count; i++)
+        {
+            var child = group[i];
+            _positionOffsets[i] = child.localPosition - target.localPosition;
+            _rotationOffsets[i] = child.localRotation.eulerAngles - target.localRotation.eulerAngles;
+            _scaleOffsets[i] = child.localScale - target.localScale;
+        }
+
+        _animationChecks = anim.GetSelectionMatrix();
+        var x = _animationChecks.GetColumn(0);
+        var boolx = new bool3(x[0], x[1], x[2]);
+        var y = _animationChecks.GetColumn(1);
+        var booly = new bool3(y[0], y[1], y[2]);
+        var z = _animationChecks.GetColumn(2);
+        var boolz = new bool3(z[0], z[1], z[2]);
+        var w = _animationChecks.GetColumn(3);
+        var boolw = new bool3(w[0], w[1], w[2]);
+        _job = new MultiTransformInterpolationJob()
+        {
+            PositionOffsets = _positionOffsets,
+            RotationOffsets = _rotationOffsets,
+            ScaleOffsets = _scaleOffsets,
+            CurrentValues = _currentValues,
+            OriginValues = _originValues,
+            AxisCheck = math.bool3x4(boolx, booly, boolz, boolw),
+        };
+
         _isActive = true;
         _data = anim;
-        _animationChecks = anim.GetSelectionMatrix();
         _target = target;
         _transformGroup = new TransformGroup(target, group);
         _vectorInterpolators = new Interpolator<Vector3>[3];
@@ -95,9 +146,33 @@ public class MultiTargetContoller
                 continue;
 
             interpolator.Run();
+            _currentValues[i] = interpolator.CurrentValue;
             activeCount++;
         }
+        _job.CurrentValues = _currentValues;
+        _jobHandle = _job.Schedule(_transformAccessArray);
         _isActive = activeCount > 0;
+    }
+
+    /// <summary>
+    /// Completes the current jobhandle. Must be called in late update
+    /// </summary>
+    internal void ApplyTransformations()
+    {
+        _jobHandle.Complete();
+    }
+
+    /// <summary>
+    /// Disposes native container types
+    /// </summary>
+    internal void Dispose()
+    {
+        if(_positionOffsets.IsCreated) _positionOffsets.Dispose();
+        if(_rotationOffsets.IsCreated) _rotationOffsets.Dispose();
+        if(_scaleOffsets.IsCreated) _scaleOffsets.Dispose();
+        if(_transformAccessArray.isCreated) _transformAccessArray.Dispose();
+        if(_currentValues.IsCreated) _currentValues.Dispose();
+        if(_originValues.IsCreated) _originValues.Dispose();
     }
 
     /// <summary>
@@ -203,11 +278,11 @@ public class MultiTargetContoller
                         animateableAxis.y ? v.y : _target.localPosition.y,
                         animateableAxis.z ? v.z : _target.localPosition.z);
                     _target.localPosition = vector;
-                    for(int i = 0; i < _transformGroup.Children.Count; i++)
-                    {
-                        var child = _transformGroup.Children[i];
-                        child.Target.localPosition = child.PositionOffset + vector;
-                    }
+                    //for(int i = 0; i < _transformGroup.Children.Count; i++)
+                    //{
+                    //    var child = _transformGroup.Children[i];
+                    //    child.Target.localPosition = child.PositionOffset + vector;
+                    //}
                 };
             case TransformProperty.Rotation:
                 return (v) =>
@@ -216,11 +291,11 @@ public class MultiTargetContoller
                         animateableAxis.y ? v.y : _target.localRotation.eulerAngles.y,
                         animateableAxis.z ? v.z : _target.localRotation.eulerAngles.z);
                     _target.localRotation = Quaternion.Euler(vector);
-                    for (int i = 0; i < _transformGroup.Children.Count; i++)
-                    {
-                        var child = _transformGroup.Children[i];
-                        child.Target.localRotation = Quaternion.Euler(child.RotationOffset + vector);
-                    }
+                    //for (int i = 0; i < _transformGroup.Children.Count; i++)
+                    //{
+                    //    var child = _transformGroup.Children[i];
+                    //    child.Target.localRotation = Quaternion.Euler(child.RotationOffset + vector);
+                    //}
                 };
             case TransformProperty.Scale:
                 return (v) =>
@@ -229,11 +304,11 @@ public class MultiTargetContoller
                         animateableAxis.y ? v.y : _target.localScale.y,
                         animateableAxis.z ? v.z : _target.localScale.z);
                     _target.localScale = vector;
-                    for (int i = 0; i < _transformGroup.Children.Count; i++)
-                    {
-                        var child = _transformGroup.Children[i];
-                        child.Target.localScale = child.ScaleOffset + vector;
-                    }
+                    //for (int i = 0; i < _transformGroup.Children.Count; i++)
+                    //{
+                    //    var child = _transformGroup.Children[i];
+                    //    child.Target.localScale = child.ScaleOffset + vector;
+                    //}
                 };
         }
         throw new System.NotImplementedException();
@@ -247,31 +322,31 @@ public class MultiTargetContoller
                 return (v) => 
                 { 
                     _target.localPosition = v;
-                    for (int i = 0; i < _transformGroup.Children.Count; i++)
-                    {
-                        var child = _transformGroup.Children[i];
-                        child.Target.localPosition = child.PositionOffset + v;
-                    }
+                    //for (int i = 0; i < _transformGroup.Children.Count; i++)
+                    //{
+                    //    var child = _transformGroup.Children[i];
+                    //    child.Target.localPosition = child.PositionOffset + v;
+                    //}
                 };
             case TransformProperty.Rotation:
                 return  (v) =>
                 { 
                     _target.localRotation = Quaternion.Euler(v);
-                    for (int i = 0; i < _transformGroup.Children.Count; i++)
-                    {
-                        var child = _transformGroup.Children[i];
-                        child.Target.localRotation = Quaternion.Euler(child.RotationOffset + v);
-                    }
+                    //for (int i = 0; i < _transformGroup.Children.Count; i++)
+                    //{
+                    //    var child = _transformGroup.Children[i];
+                    //    child.Target.localRotation = Quaternion.Euler(child.RotationOffset + v);
+                    //}
                 };
             case TransformProperty.Scale:
                 return (v) => 
                 { 
                     _target.localScale = v;
-                    for (int i = 0; i < _transformGroup.Children.Count; i++)
-                    {
-                        var child = _transformGroup.Children[i];
-                        child.Target.localScale = child.ScaleOffset + v;
-                    }
+                    //for (int i = 0; i < _transformGroup.Children.Count; i++)
+                    //{
+                    //    var child = _transformGroup.Children[i];
+                    //    child.Target.localScale = child.ScaleOffset + v;
+                    //}
                 };
         };
         throw new System.NotImplementedException();

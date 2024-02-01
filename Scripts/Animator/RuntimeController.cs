@@ -7,7 +7,6 @@ namespace Aikom.FunctionalAnimation
 {
     public class RuntimeController
     {
-        private MatrixRxC<Interpolator<float>> _axisInterpolators;
         private Interpolator<Vector3>[] _vectorInterpolators = new Interpolator<Vector3>[3] 
         { 
             new Interpolator<Vector3>(null, null, 0, Vector3.zero, Vector3.zero), 
@@ -36,7 +35,6 @@ namespace Aikom.FunctionalAnimation
             _isActive = true;
             _animationChecks = anim.GetSelectionMatrix();
             _target = target;
-            _axisInterpolators = new MatrixRxC<Interpolator<float>>(3, 3);
             _vectorInterpolators = new Interpolator<Vector3>[3];
             var properties = (TransformProperty[])System.Enum.GetValues(typeof(TransformProperty));
             for (int i = 0; i < properties.Length; i++)
