@@ -25,7 +25,7 @@ namespace Aikom.FunctionalAnimation.Examples
         {
             _animator = GetComponent<ScriptableTransformAnimator>();
             _rb = GetComponent<Rigidbody>();
-            _controller = _animator.RuntimeController;
+            //_controller = _animator.RuntimeController;
         }
 
         private void Update()

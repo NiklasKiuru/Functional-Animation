@@ -71,7 +71,7 @@ namespace Aikom.FunctionalAnimation.Editor
         /// <param name="root"></param>
         public GraphRenderElement(VisualElement root)
         {
-            _graphMaterial = AssetDatabase.LoadAssetAtPath<Material>("Assets/UI/GraphMaterial.mat");
+            _graphMaterial = AssetDatabase.LoadAssetAtPath<Material>("Assets/Functional Animation/UI/GraphMaterial.mat");
             _root = root;
             style.width = new StyleLength(new Length(80f, LengthUnit.Percent));
             style.height = new StyleLength(new Length(100f, LengthUnit.Percent));
