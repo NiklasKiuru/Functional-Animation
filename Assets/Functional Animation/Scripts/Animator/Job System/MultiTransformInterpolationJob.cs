@@ -14,15 +14,14 @@ public struct MultiTransformInterpolationJob : IJobParallelForTransform
     [ReadOnly] public bool3x4 AxisCheck;
 
     public void Execute(int index, TransformAccess transform)
-    {   
-        var propArray = new NativeArray<float3>(3, Allocator.Temp);
-
+    {
+        var propMatrix = new float3x3();
         for(int i = 0; i < 3; i++)
         {
-            propArray[i] = new float3();
+            propMatrix[i] = new float3();
             if (AxisCheck[3][i])
             {
-                propArray[i] = CurrentValues[i] + GetOffsetValue(i, index);
+                propMatrix[i] = CurrentValues[i] + GetOffsetValue(i, index);
             }
             else
             {
@@ -34,16 +33,14 @@ public struct MultiTransformInterpolationJob : IJobParallelForTransform
                     else
                         newValue[j] = GetOriginValue(i)[j];
                 }
-                propArray[i] = newValue + GetOffsetValue(i, index);
+                propMatrix[i] = newValue + GetOffsetValue(i, index);
             }
         }
 
-        transform.localPosition = propArray[0];
-        var rot = propArray[1];
+        transform.localPosition = propMatrix[0];
+        var rot = propMatrix[1];
         transform.localRotation = quaternion.EulerZXY(new float3(math.radians(rot.x), math.radians(rot.y), math.radians(rot.z)));
-        transform.localScale = propArray[2];
-
-        propArray.Dispose();        
+        transform.localScale = propMatrix[2];      
     }
 
     float3 GetOffsetValue(int prop, int index)
