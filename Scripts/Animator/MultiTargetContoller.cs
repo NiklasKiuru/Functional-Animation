@@ -149,8 +149,9 @@ public class MultiTargetContoller
             _currentValues[i] = interpolator.CurrentValue;
             activeCount++;
         }
+        
         _job.CurrentValues = _currentValues;
-        _jobHandle = _job.Schedule(_transformAccessArray);
+        _jobHandle = _job.Schedule(_transformAccessArray, _jobHandle);
         _isActive = activeCount > 0;
     }
 

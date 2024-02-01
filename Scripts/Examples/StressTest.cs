@@ -25,6 +25,7 @@ public class StressTest : MonoBehaviour
             {
                 float x = _startPos.x + j * _radius;
                 var copy = Instantiate(_cubePrefab, new Vector3(x, y, 0), Quaternion.identity);
+                copy.transform.SetParent(null);
                 _animator.AddGroupTarget(copy.transform);
             }
         }
