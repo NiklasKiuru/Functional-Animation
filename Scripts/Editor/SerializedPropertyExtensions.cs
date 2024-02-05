@@ -29,6 +29,7 @@ namespace Aikom.FunctionalAnimation.Editor
     {
         /// <summary>
         /// Get the object the serialized property holds by using reflection
+        /// This returns the value from a component by default. To get the value from a SO use <see cref="GetValue<typeparamref name="T"/>"/>"/>
         /// </summary>
         /// <typeparam name="T">The object type that the property contains</typeparam>
         /// <param name="property"></param>
@@ -36,6 +37,11 @@ namespace Aikom.FunctionalAnimation.Editor
         public static T GetValue<T>(this SerializedProperty property)
         {
             return GetNestedObject<T>(property.propertyPath, GetSerializedPropertyRootComponent(property));
+        }
+
+        public static T GetValue<T, D>(this SerializedProperty property) where D : UnityEngine.Object
+        {
+            return GetNestedObject<T>(property.propertyPath, GetSerializedPropertyRootObject<D>(property));
         }
 
         /// <summary>
@@ -61,17 +67,19 @@ namespace Aikom.FunctionalAnimation.Editor
 
         }
 
-        ///
-
-
+        ///<summary>
         /// Get the component of a serialized property
-        ///
-
+        ///</summary>
         /// The property that is part of the component
         /// The root component of the property
         public static Component GetSerializedPropertyRootComponent(SerializedProperty property)
         {
             return (Component)property.serializedObject.targetObject;
+        }
+
+        public static T GetSerializedPropertyRootObject<T>(SerializedProperty property) where T : UnityEngine.Object
+        {
+            return (T)property.serializedObject.targetObject;
         }
         ///
 

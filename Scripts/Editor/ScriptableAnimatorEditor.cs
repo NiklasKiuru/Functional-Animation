@@ -10,6 +10,7 @@ namespace Aikom.FunctionalAnimation.Editor
         private SerializedProperty _playOnAwake;
         private SerializedProperty _playAwakeName;
 
+
         private void OnEnable()
         {
             _animations = serializedObject.FindProperty("_animations");
@@ -46,7 +47,6 @@ namespace Aikom.FunctionalAnimation.Editor
 
                 EditorGUI.indentLevel--;
             }
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("_targets"), true);
 
             serializedObject.ApplyModifiedProperties();
         }

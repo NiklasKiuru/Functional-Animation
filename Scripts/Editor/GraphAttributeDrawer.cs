@@ -9,8 +9,16 @@ namespace Aikom.FunctionalAnimation.Editor
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
             EditorGUI.BeginProperty(position, label, property);
-            var data = property.GetValue<GraphData>();
-            if(data == null)
+            GraphData data;
+            if(property.serializedObject.targetObject is ScriptableObject)
+            {
+                // Do something else. The GetValue<T> does not work for ScriptableObjects
+                return;
+            }
+            else
+                data = property.GetValue<GraphData>();
+
+            if (data == null)
             {
                 data = new GraphData();
                 property.SetValue(data);

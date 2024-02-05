@@ -1,6 +1,5 @@
 using Aikom.FunctionalAnimation;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using Unity.Collections;
 using Unity.Jobs;
@@ -8,7 +7,7 @@ using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Jobs;
 
-public class MultiTargetContoller
+public class GroupController : IDisposable
 {
     private Interpolator<Vector3>[] _vectorInterpolators = new Interpolator<Vector3>[3]
     {
@@ -17,20 +16,31 @@ public class MultiTargetContoller
             new Interpolator<Vector3>(null, null, 0, Vector3.zero, Vector3.zero)
     };
     private MatrixRxC<bool> _animationChecks;
+    private bool3x4 _jobAxisChecks;
     private Transform _target;
     private bool _isActive;
+    private bool _hasInactiveGroupChildren;
     private TransformAnimation _data;
-    private TransformGroup _transformGroup;
-    private MultiTransformInterpolationJob _job;
-    private NativeArray<float3> _positionOffsets;
-    private NativeArray<float3> _rotationOffsets;
-    private NativeArray<float3> _scaleOffsets;
-    private NativeArray<float3> _currentValues;
-    private NativeArray<float3> _originValues;
+    private TransformGroup _addGroup;
+    private TransformGroup _updateGroup;
+    private List<int> _removeIds;
+    private TransformGroupJob _job;
+    private NativeList<float3x3> _offsets;
+    private float3x3 _currentValues;
+    private float3x3 _originValues;
     private TransformAccessArray _transformAccessArray;
     private JobHandle _jobHandle;
+    private int _threadCount;
 
     internal Interpolator<Vector3>[] VectorInterpolators { get => _vectorInterpolators; }
+    public bool IsActive { get => _isActive; }
+
+    public GroupController(int threadCount)
+    {
+        _addGroup = new TransformGroup(null, new List<Transform>());
+        _removeIds = new List<int>();
+        _threadCount = threadCount;
+    }
 
     /// <summary>
     /// Creates all interpolators for the current animation and activates the controller
@@ -39,26 +49,23 @@ public class MultiTargetContoller
     /// <param name="target"></param>
     internal void SetAnimation(TransformAnimation anim, Transform target, List<Transform> group)
     {   
-        TransformAccessArray.Allocate(group.Count, 16, out _transformAccessArray);
+        TransformAccessArray.Allocate(group.Count, _threadCount, out _transformAccessArray);
         for(int i = 0; i < group.Count; i++)
         {
             _transformAccessArray.Add(group[i]);
         }
-        _positionOffsets = new NativeArray<float3>(group.Count, Allocator.Persistent);
-        _rotationOffsets = new NativeArray<float3>(group.Count, Allocator.Persistent);
-        _scaleOffsets = new NativeArray<float3>(group.Count, Allocator.Persistent);
-        _currentValues = new NativeArray<float3>(3, Allocator.Persistent);
-        _originValues = new NativeArray<float3>(3, Allocator.Persistent);
-        _originValues[0] = target.localPosition;
-        _originValues[1] = target.localRotation.eulerAngles;
-        _originValues[2] = target.localScale;
+        _offsets = new NativeList<float3x3>(group.Count, Allocator.Persistent);
+        _currentValues = new float3x3();
+        _originValues = new float3x3();
+        _updateGroup = new TransformGroup(target, group);
 
         for(int i = 0; i < group.Count; i++)
         {
             var child = group[i];
-            _positionOffsets[i] = child.localPosition - target.localPosition;
-            _rotationOffsets[i] = child.localRotation.eulerAngles - target.localRotation.eulerAngles;
-            _scaleOffsets[i] = child.localScale - target.localScale;
+            var pos = child.localPosition - target.localPosition;
+            var rot = child.localRotation.eulerAngles - target.localRotation.eulerAngles;
+            var scale = child.localScale - target.localScale;
+            _offsets.Add(new float3x3(pos, rot, scale));
         }
 
         _animationChecks = anim.GetSelectionMatrix();
@@ -70,20 +77,18 @@ public class MultiTargetContoller
         var boolz = new bool3(z[0], z[1], z[2]);
         var w = _animationChecks.GetColumn(3);
         var boolw = new bool3(w[0], w[1], w[2]);
-        _job = new MultiTransformInterpolationJob()
+        _jobAxisChecks = new bool3x4(boolx, booly, boolz, boolw);
+        _job = new TransformGroupJob()
         {
-            PositionOffsets = _positionOffsets,
-            RotationOffsets = _rotationOffsets,
-            ScaleOffsets = _scaleOffsets,
+            Offsets = _offsets,
             CurrentValues = _currentValues,
             OriginValues = _originValues,
-            AxisCheck = math.bool3x4(boolx, booly, boolz, boolw),
+            AxisCheck = _jobAxisChecks,
         };
 
         _isActive = true;
         _data = anim;
         _target = target;
-        _transformGroup = new TransformGroup(target, group);
         _vectorInterpolators = new Interpolator<Vector3>[3];
         var properties = (TransformProperty[])Enum.GetValues(typeof(TransformProperty));
         for (int i = 0; i < properties.Length; i++)
@@ -132,6 +137,73 @@ public class MultiTargetContoller
     }
 
     /// <summary>
+    /// Completes the current job if it is running, disposes all unmanaged containers and marks the controller as inactive
+    /// </summary>
+    public void Disable()
+    {
+        _isActive = false;
+        if(!_jobHandle.IsCompleted)
+            _jobHandle.Complete();
+        Dispose();
+    }
+
+    /// <summary>
+    /// Adds a new child to the current group
+    /// </summary>
+    /// <param name="target"></param>
+    internal void AddGroupChild(Transform target)
+    {
+        _addGroup.Children.Add(new TransformGroup.TransformChild()
+        {
+            Target = target,
+            PositionOffset = target.localPosition - _target.localPosition,
+            RotationOffset = Vector3.zero, //target.localRotation.eulerAngles - _target.localRotation.eulerAngles,
+            ScaleOffset = Vector3.zero //(target.localScale - _target.localScale
+        }) ;
+        _hasInactiveGroupChildren = true;
+    }
+
+    /// <summary>
+    /// Removes a child from the current group
+    /// </summary>
+    /// <param name="target"></param>
+    public void RemoveGroupChild(Transform target)
+    {   
+        var id = _updateGroup.RemoveChild(target);
+        if(id != -1)
+            _removeIds.Add(id);
+        _hasInactiveGroupChildren = true;
+    }
+
+    private void CheckInactiveGroupChildren()
+    {
+        if (!_hasInactiveGroupChildren)
+            return;
+        if(_removeIds.Count > 0)
+        {
+            for (int i = 0; i < _removeIds.Count; i++)
+            {   
+                var id = _removeIds[i];
+                _transformAccessArray.RemoveAtSwapBack(id);
+                _offsets.RemoveAtSwapBack(id);
+            }
+            _removeIds.Clear();
+        }
+        if (_addGroup.Children.Count > 0)
+        {
+            for (int i = 0; i < _addGroup.Children.Count; i++)
+            {
+                var child = _addGroup.Children[i];
+                _transformAccessArray.Add(child.Target);
+                _offsets.Add(new float3x3(child.PositionOffset, child.RotationOffset, child.ScaleOffset));
+                _updateGroup.Children.Add(child);
+            }
+            _addGroup.Children.Clear();
+        }
+        _hasInactiveGroupChildren = false;
+    }
+
+    /// <summary>
     /// Updates the current animation
     /// </summary>
     internal void Update()
@@ -149,9 +221,15 @@ public class MultiTargetContoller
             _currentValues[i] = interpolator.CurrentValue;
             activeCount++;
         }
-        
-        _job.CurrentValues = _currentValues;
-        _jobHandle = _job.Schedule(_transformAccessArray, _jobHandle);
+        _job = new TransformGroupJob()
+        {
+            Offsets = _offsets,
+            CurrentValues = _currentValues,
+            OriginValues = _originValues,
+            AxisCheck = _jobAxisChecks,
+        };
+
+        _jobHandle = _job.Schedule(_transformAccessArray);
         _isActive = activeCount > 0;
     }
 
@@ -161,19 +239,18 @@ public class MultiTargetContoller
     internal void ApplyTransformations()
     {
         _jobHandle.Complete();
+        CheckInactiveGroupChildren();
     }
 
     /// <summary>
-    /// Disposes native container types
+    /// Disposes unmanaged memeory and destroys the virtual parent
     /// </summary>
-    internal void Dispose()
+    public void Dispose()
     {
-        if(_positionOffsets.IsCreated) _positionOffsets.Dispose();
-        if(_rotationOffsets.IsCreated) _rotationOffsets.Dispose();
-        if(_scaleOffsets.IsCreated) _scaleOffsets.Dispose();
+        if(_offsets.IsCreated) _offsets.Dispose();
         if(_transformAccessArray.isCreated) _transformAccessArray.Dispose();
-        if(_currentValues.IsCreated) _currentValues.Dispose();
-        if(_originValues.IsCreated) _originValues.Dispose();
+        if(_target != null)
+            UnityEngine.Object.Destroy(_target.gameObject);
     }
 
     /// <summary>
@@ -356,13 +433,15 @@ public class MultiTargetContoller
 
 public class TransformGroup
 {   
-    public Transform Parent { get; private set; }
+    public Transform Parent { get; set; }
     public List<TransformChild> Children { get; private set; }
     
     public TransformGroup(Transform parent, List<Transform> group)
     {
         Parent = parent;
         Children = new List<TransformChild>();
+        if(group == null || group.Count == 0)
+            return;
         foreach (var item in group)
         {
             var child = new TransformChild();
@@ -372,6 +451,31 @@ public class TransformGroup
             child.ScaleOffset = item.localScale - parent.localScale;
             Children.Add(child);
         }
+    }
+
+    public void AddChild(Transform target)
+    {
+        var child = new TransformChild();
+        child.Target = target;
+        child.PositionOffset = target.localPosition - Parent.localPosition;
+        child.RotationOffset = target.localRotation.eulerAngles - Parent.localRotation.eulerAngles;
+        child.ScaleOffset = target.localScale - Parent.localScale;
+        Children.Add(child);
+    }
+
+    public int RemoveChild(Transform target)
+    {   
+        var targetHash = target.GetHashCode();
+        for (int i = 0; i < Children.Count; i++)
+        {   
+            var childHash = Children[i].Target.GetHashCode();
+            if (childHash == targetHash)
+            {
+                Children.RemoveAtSwapBack(i);
+                return i;
+            }
+        }
+        return -1;
     }
 
     public struct TransformChild
