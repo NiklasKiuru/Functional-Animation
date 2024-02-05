@@ -9,19 +9,18 @@ namespace Aikom.FunctionalAnimation
         [SerializeReference] private TransformAnimation[] _animations = new TransformAnimation[0];
         [SerializeReference] private bool _playOnAwake;
         [SerializeReference] private string _playAwakeName;
-        [SerializeReference] private List<Transform> _targets = new();
 
         private Dictionary<int, RuntimeContainer> _atlas = new Dictionary<int, RuntimeContainer>();
-        private MultiTargetContoller _runtimeController = new();
+        private RuntimeController _runtimeController = new();
         private RuntimeContainer _currentAnimation;
 
-        public MultiTargetContoller RuntimeController { get => _runtimeController; }
+        public RuntimeController RuntimeController { get => _runtimeController; }
 
 
         private void Load(RuntimeContainer cont)
         {
             SetBinding((i, c) => cont.EventContainer[i].UnBind(c));
-            _runtimeController.SetAnimation(cont.Animation, transform, _targets);
+            _runtimeController.SetAnimation(cont.Animation, transform);
             SetBinding((i, c) => cont.EventContainer[i].Bind(c));
 
             void SetBinding(Action<int, Interpolator<Vector3>> bind)
@@ -36,10 +35,6 @@ namespace Aikom.FunctionalAnimation
             _currentAnimation = cont;
         }
 
-        public void AddGroupTarget(Transform target)
-        {
-            _targets.Add(target);
-        }
 
         /// <summary>
         /// Play a preassigned animation clip
@@ -113,16 +108,6 @@ namespace Aikom.FunctionalAnimation
 
             if (_playOnAwake && !string.IsNullOrEmpty(_playAwakeName))
                 Play(_playAwakeName);
-        }
-
-        private void OnDisable()
-        {
-            _runtimeController.Dispose();
-        }
-
-        private void LateUpdate()
-        {
-            _runtimeController.ApplyTransformations();
         }
 
         public void RegisterCallBack(TransformProperty prop, Action<Vector3> cb, EventType evt, int animationId)

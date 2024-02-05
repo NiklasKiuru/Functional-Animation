@@ -30,7 +30,7 @@ namespace Aikom.FunctionalAnimation.Editor
         private AnimationData[] _fallbackData = new AnimationData[3] { new AnimationData(), new AnimationData(), new AnimationData() };
         private TransformProperty _selectedProperty;
 
-        [MenuItem("Window/Functional Animation/Transform Animation")]
+        [MenuItem("Window/Functional Animation/Transform Animation Graph")]
         public static void Init()
         {
             var window = GetWindow<TransformAnimationWindow>();
@@ -493,7 +493,6 @@ namespace Aikom.FunctionalAnimation.Editor
         {
             _currentFilePath = _targetAnim != null ? AssetDatabase.GetAssetPath(_targetAnim) : null;
             EditorPrefs.SetString("HeldAnimationPath", _currentFilePath);
-            //Selection.selectionChanged -= SetAnimatior;
             _unregisterCbs?.Invoke();
         }
 

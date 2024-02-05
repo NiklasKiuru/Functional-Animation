@@ -17,7 +17,7 @@ namespace Aikom.FunctionalAnimation
 
         public int Length => 3;
         public AnimationData this[TransformProperty index] { get => this[GetIndexer(index)]; }
-        public float Duration { get => _duration; internal set => _duration = value; }
+        public float Duration { get => _duration; set => _duration = value; }
         public AnimationData this[int index] { get => _animationData[index]; }
 
 #if UNITY_EDITOR
