@@ -22,6 +22,12 @@ Manipulate graph data visually in the editor
 * Grid line count
 	- Amount of helper grid lines drawn vertically and horizontally
 
+* Drag and drop handles
+	- Edit each functions starting and ending values and positions
+	- The handle shows the current time of the node (X) and its value (Y)
+> Note that each graph always has a locked starting and ending time (0 , 1)
+<img src="https://github.com/NiklasKiuru/Functional-Animation/blob/main/Documentation/graph_drag.gif" width="800">
+
 ### Animation properties
 * Create new - button
 	- Opens a file window to save and create a new animation object
@@ -44,7 +50,12 @@ Manipulate graph data visually in the editor
 	- Determines the duration of the animation for the property
 
 * Time control
-	- Determines the way how time gets handled for the animation. There are three possible options: PlayOnce, Loop, PingPong
+	- Determines the way time gets handled for the animation. There are three possible options: PlayOnce, Loop, PingPong
+	| Control | Description |
+	| ------- | ------- |
+	| PlayOnce | Runs the property interpolation only once and stops |
+	| Loop | Loops back into starting position once end has been reached |
+	| PingPong | Reverses the direction of time once either end point has been reached |
 
 * Animation mode
 	- Relative: Records the initial property value once the animation starts and uses it as its starting value and calculates the ending value based on given offset.
