@@ -2,6 +2,8 @@ using System.Collections.Generic;
 using UnityEngine;
 using Aikom.FunctionalAnimation.Utility;
 using Unity.Mathematics;
+using static UnityEngine.Rendering.VirtualTexturing.Debugging;
+using UnityEngine.UIElements;
 
 namespace Aikom.FunctionalAnimation
 {
@@ -44,9 +46,14 @@ namespace Aikom.FunctionalAnimation
             if(data.Length != funcs.Length)
                 throw new System.ArgumentException("Length of data and functions must be equal");
             //_monoGroup.Add(data, range, speed, ctrl);
+            
             return data;
         }
         
+        private void Query<T>() where T : System.Enum
+        {
+
+        }
 
         internal static TransformInterpolationData GetData(int hash)
         {   

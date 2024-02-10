@@ -72,10 +72,10 @@ public class CallbackHandleTest : MonoBehaviour
 
     private void OnDestroy()
     {
-        _results.Dispose();
-        _functions.Dispose();
-        _floats.Dispose();
-        _events.Dispose();
+        if(_results.IsCreated) _results.Dispose();
+        if(_functions.IsCreated) _functions.Dispose();
+        if(_floats.IsCreated) _floats.Dispose();
+        if (_events.IsCreated) _events.Dispose();
     }
 
 }
