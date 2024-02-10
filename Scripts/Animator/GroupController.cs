@@ -24,7 +24,7 @@ public class GroupController : IDisposable
     private TransformGroup _addGroup;
     private TransformGroup _updateGroup;
     private List<int> _removeIds;
-    private TransformGroupJob _job;
+    private SyncTransformGroupJob _job;
     private NativeList<float3x3> _offsets;
     private float3x3 _currentValues;
     private float3x3 _originValues;
@@ -78,7 +78,7 @@ public class GroupController : IDisposable
         var w = _animationChecks.GetColumn(3);
         var boolw = new bool3(w[0], w[1], w[2]);
         _jobAxisChecks = new bool3x4(boolx, booly, boolz, boolw);
-        _job = new TransformGroupJob()
+        _job = new SyncTransformGroupJob()
         {
             Offsets = _offsets,
             CurrentValues = _currentValues,
@@ -221,7 +221,7 @@ public class GroupController : IDisposable
             _currentValues[i] = interpolator.CurrentValue;
             activeCount++;
         }
-        _job = new TransformGroupJob()
+        _job = new SyncTransformGroupJob()
         {
             Offsets = _offsets,
             CurrentValues = _currentValues,

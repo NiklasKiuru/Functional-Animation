@@ -2,55 +2,86 @@ using Unity.Burst;
 using Unity.Jobs;
 using Unity.Collections;
 using Unity.Mathematics;
+using System;
+using Unity.Collections.LowLevel.Unsafe;
+using Codice.Client.Commands;
 
 namespace Aikom.FunctionalAnimation
 {
     [BurstCompile]
     public struct InterpolationJob : IJob
-    {
-        [ReadOnly] public NativeArray<FunctionPointer<EF.EasingFunctionDelegate>> FunctionPointers;
-        [ReadOnly] public NativeArray<float2> TimelineData;
-        [ReadOnly] public NativeArray<InterpolationData> TimeData;
-        public NativeArray<Clock> Clocks;
+    {   
+        public NativeArray<RangedFunction> Functions;
+        public NativeArray<FloatInterpolator> Data;
         public NativeArray<float> Results;
         public float DeltaTime;
+        public bool HasEvents;
+        public NativeList<int> Events;
 
         public void Execute()
         {   
-            int startingPoint = 0;
-            for (int i = 0; i < TimeData.Length; i++)
+            var startingPoint = 0;
+            for (int i = 0; i < Data.Length; i++)
             {   
-                var clock = Clocks[i];
-                var timeData = TimeData[i];
-                var time = clock.Tick(DeltaTime);
-                Clocks[i] = clock;
-                var endingPoint = startingPoint + timeData.Length;
-                for (int j = startingPoint; j <  endingPoint; j++)
+                var data = Data[i];
+                var time = data.Clock.Tick(DeltaTime);
+                var endingPoint = startingPoint + data.Length;
+                for (int j = startingPoint; j < endingPoint; j++)
                 {
-                    var timelineIndex = j + i;
-                    if (time <= TimelineData[timelineIndex].x && time < TimelineData[timelineIndex + 1].x)
-                    {
-                        var startingNode = TimelineData[timelineIndex];
-                        var endingNode = TimelineData[timelineIndex + 1];
-                        var amplitude = endingNode.y - startingNode.y;
-                        var totalTime = 1 - (1 - endingNode.x) - startingNode.x;
-                        var t = (time - startingNode.x) * (1 / totalTime);
-                        var mult = FunctionPointers[j].Invoke(t) * amplitude + startingNode.y;
-                        Results[i] = timeData.Start + mult * (timeData.End - timeData.Start);
+                    var rangedFunc = Functions[j];
+                    var startingNode = rangedFunc.Start;
+                    var endingNode = rangedFunc.End;
+                    if (time >= startingNode.x && time <= endingNode.x)
+                    {   
+                        Results[i] = rangedFunc.Interpolate(data.Start, data.End, time);
                         break;
                     }
-                    else if (time == TimelineData[timelineIndex + 1].x)
+                }
+                if(data.Clock.TimeControl == TimeControl.PlayOnce && time >= 1)
+                {
+                    HasEvents = true;
+                    Events.Add(i);
+                }
+                startingPoint += data.Length;
+                Data[i] = data;
+            }
+        }
+
+        [BurstCompile]
+        public unsafe static void ExecuteStatic(in RangedFunction* functions, FloatInterpolator* data, 
+            float* results, float delta, out bool hasEvents, int* events, int length)
+        {
+            hasEvents = false;
+            var startingPoint = 0;
+            for (int i = 0; i < length; i++)
+            {
+                var dataPoint = data[i];
+                var time = dataPoint.Clock.Tick(delta);
+                var endingPoint = startingPoint + dataPoint.Length;
+                for (int j = startingPoint; j < endingPoint; j++)
+                {
+                    var rangedFunc = functions[j];
+                    var startingNode = rangedFunc.Start;
+                    var endingNode = rangedFunc.End;
+                    if (time >= startingNode.x && time <= endingNode.x)
                     {
-                        Results[i] = timeData.Start + (timeData.End - timeData.Start) * TimelineData[endingPoint].y;
+                        results[i] = rangedFunc.Interpolate(dataPoint.Start, dataPoint.End, time);
+                        break;
                     }
                 }
-                startingPoint += timeData.Length;
+                if (dataPoint.Clock.TimeControl == TimeControl.PlayOnce && time >= 1)
+                {
+                    hasEvents = true;
+                    events[0] = i;
+                }
+                startingPoint += dataPoint.Length;
+                data[i] = dataPoint;
             }
         }
     }
 
-    [BurstCompatible]
-    public struct InterpolationData
+    [BurstCompile]
+    public struct FloatInterpolator : IInterpolator<float>
     {   
         /// <summary>
         /// Length of the function pointer array
@@ -66,6 +97,71 @@ namespace Aikom.FunctionalAnimation
         /// Interpolation end value
         /// </summary>
         public float End;
+
+        /// <summary>
+        /// Internal clock
+        /// </summary>
+        public Clock Clock;
+
+        public float Current;
+        public ExecutionStatus Status { get; set; }
+
+        //ExecutionStatus IInterpolatorHandle<float>.Status { get; set ; }
+
+        public float GetValue()
+        {
+            return Current;
+        }
+
+        public float IncrimentValue()
+        {
+            throw new NotImplementedException();
+        }
+
+        float IInterpolator<float>.GetValue()
+        {
+            throw new NotImplementedException();
+        }
+
+        float IInterpolator<float>.IncrimentValue()
+        {
+            throw new NotImplementedException();
+        }
+    }
+
+    public struct VectorInterpolator : IInterpolator<float3>
+    {
+        public ExecutionStatus Status => throw new System.NotImplementedException();
+
+        ExecutionStatus IInterpolatorHandle<float3>.Status { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+
+        public FloatInterpolator x;
+        public FloatInterpolator y;
+        public FloatInterpolator z;
+
+        public Clock Clock;
+
+
+
+        public float3 IncrimentValue()
+        {
+            throw new NotImplementedException();
+        }
+
+        public float3 GetValue()
+        {
+            throw new NotImplementedException();
+        }
+
+        float3 IInterpolator<float3>.IncrimentValue()
+        {
+            throw new NotImplementedException();
+        }
+
+        float3 IInterpolator<float3>.GetValue()
+        {
+            throw new NotImplementedException();
+        }
     }
 }
 

@@ -8,7 +8,7 @@ namespace Aikom.FunctionalAnimation
     {
         Loop,
         PingPong,
-        OneShot
+        PlayOnce
     }
 
     /// <summary>
@@ -52,7 +52,7 @@ namespace Aikom.FunctionalAnimation
         /// </summary>
         public int Direction { get => _direction; }
 
-        public TimeKeeper(float speed, TimeControl ctrl = TimeControl.OneShot)
+        public TimeKeeper(float speed, TimeControl ctrl = TimeControl.PlayOnce)
         {
             if (speed == float.PositiveInfinity)
                 speed = 0;
@@ -76,7 +76,7 @@ namespace Aikom.FunctionalAnimation
                 case TimeControl.PingPong:
                     _controller = PingPong;
                     break;
-                case TimeControl.OneShot:
+                case TimeControl.PlayOnce:
                     _controller = Forward;
                     break;
             }

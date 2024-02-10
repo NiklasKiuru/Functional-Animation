@@ -1,4 +1,3 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Aikom.FunctionalAnimation.Utility;
@@ -6,16 +5,16 @@ using Unity.Mathematics;
 
 namespace Aikom.FunctionalAnimation
 {
-    public class Animator : MonoBehaviour
+    public class EFAnimator : MonoBehaviour
     {
-        internal static Animator Instance => (ApplicationUtils.IsQuitting || _instance != null) ? _instance : (_instance = CreateInstance());
-        protected static Animator _instance;
+        internal static EFAnimator Instance => (ApplicationUtils.IsQuitting || _instance != null) ? _instance : (_instance = CreateInstance());
+        protected static EFAnimator _instance;
         private Dictionary<int, GroupController> _transformGroups = new();
         private Dictionary<int, TransformInterpolationData> _transformData = new();
 
-        private static Animator CreateInstance()
+        private static EFAnimator CreateInstance()
         {
-            var gameObject = new GameObject(nameof(Animator))
+            var gameObject = new GameObject(nameof(EFAnimator))
             {
                 hideFlags = HideFlags.DontSave,
             };
@@ -29,14 +28,23 @@ namespace Aikom.FunctionalAnimation
             {
                 DontDestroyOnLoad(gameObject);
             }
-            var instance = gameObject.AddComponent<Animator>();
+            var instance = gameObject.AddComponent<EFAnimator>();
             instance.OnInit();
             return instance;
         }
 
-        internal static void RegisterInterpolatorTarget(TransformInterpolationData data, Transform transform)
+        internal static IInterpolator<float3> RegisterVectorTarget(TransformInterpolationData data, Transform transform)
         {
             //_monoGroup.Add(data, range, speed, ctrl);
+            return default;
+        }
+
+        internal static IInterpolator<float> RegisterFloatTarget(FloatInterpolator data, params RangedFunction[] funcs)
+        {   
+            if(data.Length != funcs.Length)
+                throw new System.ArgumentException("Length of data and functions must be equal");
+            //_monoGroup.Add(data, range, speed, ctrl);
+            return data;
         }
         
 
@@ -80,12 +88,13 @@ namespace Aikom.FunctionalAnimation
         /// <param name="groupName"></param>
         public static void TerminateTransformGroup(string groupName)
         {
+            if(_instance == null)
+                return;
             var hash = groupName.GetHashCode();
-            var instance = Instance;
-            if(instance._transformGroups.TryGetValue(hash, out var controller))
+            if(_instance._transformGroups.TryGetValue(hash, out var controller))
             {
                 controller.Disable();
-                instance._transformGroups.Remove(hash);
+                _instance._transformGroups.Remove(hash);
             }
         }
 
@@ -96,9 +105,10 @@ namespace Aikom.FunctionalAnimation
         /// <param name="groupName"></param>
         public static void AddToTransformGroup(Transform transform, string groupName)
         {
+            if (_instance == null)
+                return;
             var hash = groupName.GetHashCode();
-            var instance = Instance;
-            if(instance._transformGroups.TryGetValue(hash, out var controller))
+            if(_instance._transformGroups.TryGetValue(hash, out var controller))
             {
                 controller.AddGroupChild(transform);
             }
@@ -110,7 +120,9 @@ namespace Aikom.FunctionalAnimation
         /// <param name="transform"></param>
         /// <param name="groupName"></param>
         public static void RemoveFromTransformGroup(Transform transform, string groupName)
-        {
+        {   
+            if(_instance == null)
+                return;
             var hash = groupName.GetHashCode();
             if(_instance._transformGroups.ContainsKey(hash))
             {
@@ -120,7 +132,6 @@ namespace Aikom.FunctionalAnimation
 
         private void Update()
         {
-
             foreach (var group in _transformGroups)
             {
                 group.Value.Update();
@@ -137,7 +148,6 @@ namespace Aikom.FunctionalAnimation
 
         private void OnDestroy()
         {
-
             if (_transformGroups != null)
             {
                 foreach (var group in _transformGroups)

@@ -2,7 +2,7 @@ using Aikom.FunctionalAnimation;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using Animator = Aikom.FunctionalAnimation.Animator;
+using EFAnimator = Aikom.FunctionalAnimation.EFAnimator;
 
 public class StressTest : MonoBehaviour
 {
@@ -29,7 +29,7 @@ public class StressTest : MonoBehaviour
             }
         }
 
-        Animator.CreateTransformGroup("StressTest", _anim, 16, list);
+        EFAnimator.CreateTransformGroup("StressTest", _anim, 16, list);
     }
 
     private void Update()
@@ -40,7 +40,7 @@ public class StressTest : MonoBehaviour
             var pos = ray.origin + ray.direction * 10;
             pos.z = 0;
             var copy = Instantiate(_cubePrefab, pos, Quaternion.identity);
-            Animator.AddToTransformGroup(copy.transform, "StressTest");
+            EFAnimator.AddToTransformGroup(copy.transform, "StressTest");
         }
 
         if (Input.GetMouseButtonDown(1))
@@ -48,7 +48,7 @@ public class StressTest : MonoBehaviour
             var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
             Physics.Raycast(ray, out var hitInfo);
             if (hitInfo.collider != null)
-                Animator.RemoveFromTransformGroup(hitInfo.collider.transform, "StressTest");
+                EFAnimator.RemoveFromTransformGroup(hitInfo.collider.transform, "StressTest");
         }
     }
 }

@@ -4,7 +4,7 @@ using Unity.Mathematics;
 using UnityEngine.Jobs;
 
 [BurstCompile]
-public struct TransformGroupJob : IJobParallelForTransform
+public struct SyncTransformGroupJob : IJobParallelForTransform
 {
     [ReadOnly] public NativeArray<float3x3> Offsets;
     [ReadOnly] public float3x3 CurrentValues;

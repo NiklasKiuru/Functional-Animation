@@ -229,7 +229,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 107763620}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a558dccde7359e445a50432ef8cd584a, type: 3}
   m_Name: 
@@ -252,6 +252,7 @@ GameObject:
   - component: {fileID: 256331733}
   - component: {fileID: 256331732}
   - component: {fileID: 256331736}
+  - component: {fileID: 256331737}
   m_Layer: 0
   m_Name: Plane (1)
   m_TagString: Ground
@@ -350,8 +351,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 17a0b055ac046ec4b93bec29ec7c8abe, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _type: 1
-  _amount: 1000
+  _type: 0
+  _amount: 64000
+--- !u!114 &256331737
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 256331731}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b8a6e315e6302cf4da72fcd1bf4e13aa, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &705507993
 GameObject:
   m_ObjectHideFlags: 0

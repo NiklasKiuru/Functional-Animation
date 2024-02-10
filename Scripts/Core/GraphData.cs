@@ -71,12 +71,17 @@ namespace Aikom.FunctionalAnimation
         /// Returns a pointer array of the functions in this graph data
         /// </summary>
         /// <returns></returns>
-        public FunctionPointer<EF.EasingFunctionDelegate>[] GetPointerArray()
+        public RangedFunction[] GetRangedFunctionArray()
         {   
-            var array = new FunctionPointer<EF.EasingFunctionDelegate>[_functions.Length];
+            var array = new RangedFunction[_functions.Length];
             for (int i = 0; i < _functions.Length; i++)
             {
-                array[i] = EditorFunctions.Pointers[_functions[i]];
+                array[i] = new RangedFunction
+                {
+                    Pointer = EditorFunctions.Pointers[_functions[i]],
+                    Start = _timeline.Nodes[i],
+                    End = _timeline.Nodes[i + 1]
+                };
             }
             return array;
         }
@@ -123,8 +128,13 @@ namespace Aikom.FunctionalAnimation
         /// Removes a function from the function array and readjusts the timeline based on removed function
         /// </summary>
         /// <param name="index"></param>
-        public void RemoveFunction(int index)
-        {
+        public bool RemoveFunction(int index)
+        {   
+            if(_functions.Length == 1)
+            {
+                Debug.LogWarning("Cannot remove the only function in the array");
+                return false;
+            }
             var newArray = new Function[_functions.Length - 1];
             var timeline = _timeline;
 
@@ -138,6 +148,7 @@ namespace Aikom.FunctionalAnimation
                 indexer++;
             }
             _functions = newArray;
+            return true;
         }
 
         /// <summary>
