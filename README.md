@@ -22,15 +22,9 @@ Manipulate graph data visually in the editor
 * Grid line count
 	- Amount of helper grid lines drawn vertically and horizontally
 
-* Graph drag and drop handles
-	- Drag and drop each functions starting and ending points and values
-> Note that each graph has a locked starting and ending point which cannot be altered
-<img src= "https://github.com/NiklasKiuru/Functional-Animation/blob/main/Documentation/graph_drag.gif" width="800">
-
 ### Animation properties
 * Create new - button
-	- Opens a file window to save and create a new animation object.
-	- You can optionally drag and drop an existing animation object from assets folder to the "Target Animation"- field to edit an existing animation.
+	- Opens a file window to save and create a new animation object
 
 * Save as - button
 	- Saves the current animation as a new animation object
