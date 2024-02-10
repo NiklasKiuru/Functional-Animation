@@ -1,4 +1,5 @@
 using System;
+using Unity.Mathematics;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -12,6 +13,10 @@ namespace Aikom.FunctionalAnimation.Editor
     public class GraphRenderElement : ImmediateModeElement
     {
         private const int c_maxGridLines = 20;
+        private const float c_offsetX = 0.23f;
+        private const float c_offsetY = 0.1f;
+        private const float c_width = 0.73f;
+        private const float c_height = 0.8f;
 
         private Material _graphMaterial;
         private int _sampleAmount = 1000;
@@ -67,7 +72,6 @@ namespace Aikom.FunctionalAnimation.Editor
         /// <summary>
         /// Base constructor
         /// </summary>
-        /// <param name="lineMaterial"></param>
         /// <param name="root"></param>
         public GraphRenderElement(VisualElement root)
         {
@@ -162,6 +166,12 @@ namespace Aikom.FunctionalAnimation.Editor
             DrawGraph();
         }
 
+        public void SetDrawProperty(TransformProperty property)
+        {
+            DrawProperty = property;
+            DrawGraph();
+        }
+
         public void SetModificationTarget(int target)
         {
             DefaultModificationTarget = target;
@@ -172,29 +182,41 @@ namespace Aikom.FunctionalAnimation.Editor
         /// Sets and activates the node markers for the given axis
         /// </summary>
         /// <param name="axis"></param>
-        public void SetNodeMarkers(Axis axis)
+        public void SetNodeMarkers()
         {
-            if (Animation == null)
-                return;
             for (int i = 0; i < _positionMarkers.Length; i++)
                 _positionMarkers[i].style.visibility = Visibility.Hidden;
-
-            var axisColor = GetAxisColor(axis);
-            var activeMarkers = 0;
+            if (Animation == null)
+                return;
             var container = Animation[DrawProperty];
-            var nodes = container[axis].Nodes;
-            foreach (var node in nodes)
+            if(!container.Animate)
+                return;
+
+            var axis = (Axis[])Enum.GetValues(typeof(Axis));
+            var activeMarkers = 0;
+            var draw = new bool4(container.AnimateableAxis, !container.SeparateAxis);
+            foreach (var ax in axis)
             {
-                var pos = GetAbsolutePos(node.x, node.y);
-                pos = new Vector2(pos.x * _root.layout.width, pos.y * (_root.layout.height + DockAreaHeight));
-                pos = this.WorldToLocal(pos);
-                var marker = _positionMarkers[activeMarkers];
-                marker.style.visibility = Visibility.Visible;
-                marker.style.left = pos.x - (marker.layout.width / 2) - 2;
-                marker.style.bottom = pos.y + (marker.layout.height / 2) + 10;
-                marker.Activate(activeMarkers, axisColor, axis, node);
-                activeMarkers++;
+                if (!draw[(int)ax])
+                    continue;
+                var axisColor = GetAxisColor(ax);
+                var index = 0;
+                var nodes = container[ax].Nodes;
+                foreach (var node in nodes)
+                {
+                    var pos = GetAbsolutePos(node.x, node.y);
+                    pos = new Vector2(pos.x * _root.layout.width, pos.y * (_root.layout.height + DockAreaHeight));
+                    pos = this.WorldToLocal(pos);
+                    var marker = _positionMarkers[activeMarkers];
+                    marker.style.visibility = Visibility.Visible;
+                    marker.style.left = pos.x - (marker.layout.width / 2) - 2;
+                    marker.style.bottom = pos.y + (marker.layout.height / 2) + 10;
+                    marker.Activate(index, axisColor, ax, node);
+                    activeMarkers++;
+                    index++;
+                }
             }
+            
         }
 
         /// <summary>
@@ -205,7 +227,7 @@ namespace Aikom.FunctionalAnimation.Editor
         public Vector2 GetGraphPosition(Vector2 panelPositon)
         {
             var graphPos = new Vector2(panelPositon.x / _root.layout.width, 1 - (panelPositon.y / (_root.layout.height + DockAreaHeight)));
-            var newVec = new Vector2((graphPos.x - 0.23f) / 0.73f, (graphPos.y - 0.1f) / 0.8f);
+            var newVec = new Vector2((graphPos.x - c_offsetX) / c_width, (graphPos.y - c_offsetY) / c_height);
             return newVec;
         }
 
@@ -213,7 +235,11 @@ namespace Aikom.FunctionalAnimation.Editor
         /// Main method for drawing the graph
         /// </summary>
         public void DrawGraph()
-        {
+        {   
+            // Guarantees that the markers are redrawn properly
+            if (!_isDragging)
+                SetNodeMarkers();
+
             if (Animation == null)
                 return;
             //if (GraphData == null || GraphData.Length == 0)
@@ -266,32 +292,26 @@ namespace Aikom.FunctionalAnimation.Editor
                     DisableInactiveMarkers();
 
                 var container = Animation[DrawProperty];
-                var axisCount = container.Length - 1;
-                int startingPoint = 0;
-                if (!container.SeparateAxis)
-                {
-                    startingPoint = 3;
-                    axisCount++;
-                }
                 _propertyName.text = DrawProperty.ToString();
+                var drawAxis = new bool4(container.AnimateableAxis, !container.SeparateAxis);
+                _measurementInterval = 1f / _sampleAmount;
 
-                while (startingPoint < axisCount)
+                for (int i = 0; i < 4; i++)
                 {
-                    SetColor(startingPoint);
-                    var func = container.GenerateFunction((Axis)startingPoint);
-                    float sampleInc = 1f / _sampleAmount;
-                    _measurementInterval = sampleInc;
+                    if (!drawAxis[i])
+                        continue;
 
+                    SetColor(i);
+                    var func = container.GenerateFunction((Axis)i);
                     for (int sample = 0; sample < _sampleAmount; sample++)
                     {
                         DrawVertexSingle(sample);
                         DrawVertexSingle((sample + 1));
                     }
-                    startingPoint++;
 
                     Vector3 DrawVertexSingle(int index)
                     {
-                        float x = index * sampleInc;
+                        float x = index * _measurementInterval;
                         return DrawVertex(x, func(x));
                     }
                 }
@@ -346,7 +366,7 @@ namespace Aikom.FunctionalAnimation.Editor
 
         private Vector3 GetAbsolutePos(float x, float y)
         {
-            return new Vector3((x * 0.73f) + 0.23f, (y * 0.8f) + 0.1f, 0);
+            return new Vector3((x * c_width) + c_offsetX, (y * c_height) + c_offsetY, 0);
         }
 
         private void OnMarkerElementPositionChanged(MouseMoveEvent evt)

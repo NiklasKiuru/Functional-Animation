@@ -8,7 +8,7 @@ using UnityEngine.UIElements;
 
 namespace Aikom.FunctionalAnimation.Editor
 {
-    public class GraphFunctionController<T> : VisualElement
+    public class GraphFunctionController<T> : VisualElement, IGraphController
     {
         private List<FunctionSelectionField> _fields = new List<FunctionSelectionField>();
         private ICustomIndexable<GraphData, T> _source;
@@ -57,6 +57,11 @@ namespace Aikom.FunctionalAnimation.Editor
         ~GraphFunctionController()
         {
             _selector.UnregisterValueChangedCallback(UpdateWindow);
+        }
+
+        public GraphData GetSource()
+        {
+            return _source[_currentSelection];
         }
 
         /// <summary>
@@ -125,6 +130,7 @@ namespace Aikom.FunctionalAnimation.Editor
                 var field = new FunctionSelectionField(index.ToString(), func);
                 field.Index = index;
                 field.Parent = this;
+                field.OnFunctionRemovedInUI += Refresh;
                 _fields.Add(field);
                 Add(field);
                 index++;
@@ -144,6 +150,7 @@ namespace Aikom.FunctionalAnimation.Editor
             {
                 field.UnregisterValueChangedCallback(OnValueChanged);
                 field.RemoveButton.clicked -= field.OnRemoveButtonClicked;
+                field.OnFunctionRemovedInUI -= CreateFields;
             }
         }
 
@@ -180,12 +187,12 @@ namespace Aikom.FunctionalAnimation.Editor
             /// <summary>
             /// Parent controller
             /// </summary>
-            public GraphFunctionController<T> Parent { get; set; }
+            public IGraphController Parent { get; set; }
 
             /// <summary>
             /// Fired when the remove button is clicked
             /// </summary>
-            public static event Action<T> OnFunctionRemovedInUI;
+            public event Action OnFunctionRemovedInUI;
 
             /// <summary>
             /// Creates a new FunctionSelectionField
@@ -196,6 +203,7 @@ namespace Aikom.FunctionalAnimation.Editor
             {   
                 style.flexDirection = FlexDirection.Row;
                 labelElement.style.unityTextAlign = TextAnchor.MiddleCenter;
+                labelElement.style.minWidth = new StyleLength(new Length(20f, LengthUnit.Pixel));
                 RemoveButton = new Button(OnRemoveButtonClicked);
                 RemoveButton.text = "Remove";
                 Add(RemoveButton);
@@ -206,14 +214,10 @@ namespace Aikom.FunctionalAnimation.Editor
             /// </summary>
             public void OnRemoveButtonClicked()
             {   
-                if(Index == 0 && Parent.Source[Parent.CurrentSelection].Length == 1)
-                {
-                    Debug.LogWarning("Cannot remove the only function in the array");
-                    return;
-                }
-                Parent.Source[Parent.CurrentSelection].RemoveFunction(Index);
-                OnFunctionRemovedInUI?.Invoke(Parent.CurrentSelection);
-                Parent.Refresh();
+                var source = Parent.GetSource();
+                if(source.RemoveFunction(Index))
+                    OnFunctionRemovedInUI?.Invoke();
+
             }
         }
     }

@@ -51,7 +51,7 @@ namespace Aikom.FunctionalAnimation
         /// <param name="speed">Interpolation speed</param>
         /// <param name="target"></param>
         /// <param name="ctrl"></param>
-        public Interpolator(Func<float, T, T, T> interpolation, Action<T> setVal, float speed, T start, T target, TimeControl ctrl = TimeControl.OneShot)
+        public Interpolator(Func<float, T, T, T> interpolation, Action<T> setVal, float speed, T start, T target, TimeControl ctrl = TimeControl.PlayOnce)
         {
             _setVal = setVal;
             _target = target;
@@ -73,7 +73,7 @@ namespace Aikom.FunctionalAnimation
                 return val;
             };
 
-            if(ctrl == TimeControl.OneShot)
+            if(ctrl == TimeControl.PlayOnce)
                 OnTargetReached += SetStatus;
         }
 

@@ -18,8 +18,6 @@ namespace Aikom.FunctionalAnimation.Examples
         [SerializeField] private int _amount;
 
         private InterpolatorGroup _data;
-        private NativeArray<float> _results;
-        private InterpolationJob _job;
         private Interpolator<float>[] _interpolators;
 
         private void Start()
@@ -44,7 +42,6 @@ namespace Aikom.FunctionalAnimation.Examples
 
 
             _data = new InterpolatorGroup(graphs, endingPoints, speeds, timeControls);
-            _results = new NativeArray<float>(_amount, Allocator.Persistent);
 
             Func<float, float, float, float> GetIncriment(GraphData data)
             {
@@ -64,44 +61,13 @@ namespace Aikom.FunctionalAnimation.Examples
             }
             else
             {
-                _job = new InterpolationJob
-                {
-                    FunctionPointers = _data.FuncPointers,
-                    TimelineData = _data.TimelineData,
-                    TimeData = _data.LerpData,
-                    Clocks = _data.Clocks,
-                    DeltaTime = Time.deltaTime,
-                    Results = _results
-                };
-                _job.Run();
-                //_job.Execute();
+                _data.Run();
             }
-
-            //_clock.Tick();
-            //var time = _clock.Time;
-            //for (int i = 0; i < _data.TimeData.Length; i++)
-            //{   
-            //    var timeData = _data.TimeData[i];
-            //    timeData.Value = time;
-            //    _data.TimeData[i] = timeData;
-                
-            //}
-
-            //_job = new InterpolationJob
-            //{
-            //    FunctionPointers = _data.FuncPointers,
-            //    TimelineData = _data.TimelineData,
-            //    TimeData = _data.TimeData,
-            //    Results = _results
-            //};
-            //_job.Run();
-            ////_job.Execute();
         }
 
         private void OnDisable()
         {
             _data.Dispose();
-            _results.Dispose();
         }
     }
 }

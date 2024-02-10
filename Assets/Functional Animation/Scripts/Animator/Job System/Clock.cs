@@ -41,7 +41,7 @@ namespace Aikom.FunctionalAnimation
         /// </summary>
         public int Direction { get => _direction; }
 
-        public Clock(float speed, TimeControl ctrl = TimeControl.OneShot)
+        public Clock(float speed, TimeControl ctrl = TimeControl.PlayOnce)
         {
             if (speed == float.PositiveInfinity)
                 speed = 0;
@@ -58,11 +58,12 @@ namespace Aikom.FunctionalAnimation
         /// <returns></returns>
         public float Tick(float delta)
         {
+            _time += _speed * delta * _direction;
             return _timeControl switch
             {
-                TimeControl.Loop => Loop(delta),
-                TimeControl.PingPong => PingPong(delta),
-                TimeControl.OneShot => Forward(delta),
+                TimeControl.Loop => Loop(),
+                TimeControl.PingPong => PingPong(),
+                TimeControl.PlayOnce => Forward(),
                 _ => _time,
             };
         }
@@ -72,28 +73,36 @@ namespace Aikom.FunctionalAnimation
         /// </summary>
         public void Reset() => _time = 0;
 
-        private float Forward(float delta)
-        {
-            _time += _speed * delta * _direction;
+        private float Forward()
+        {   
             _time = Mathf.Clamp01(_time);
             return _time;
         }
 
-        private float PingPong(float delta)
-        {
+        private float PingPong()
+        {   
             if (_time >= 1)
+            {
                 _direction = -1;
+                _time = 1 - (1 - _time);
+            }
+                
             else if (_time <= 0)
+            {
                 _direction = 1;
-            return Forward(delta);
+                _time = Mathf.Abs(_time);
+            }
+                
+            return _time;
         }
 
-        private float Loop(float delta)
+        private float Loop()
         {
             if (_time >= 1)
-                _time = 0;
-            return Forward(delta);
+                _time = 1 - _time;
+            return _time;
         }
+
     }
 }
 
