@@ -1,88 +1,92 @@
-using Aikom.FunctionalAnimation;
 using System;
 using System.Collections.Generic;
-using Unity.Collections;
+using System.Runtime.CompilerServices;
 
-public class CallbackRegistry : IManagedObject, IDisposable
-{   
-    private static bool _isDirty;
-    private static int _runningIndex = 0;
-    private static Dictionary<int, CallbackHandle> _callbacks = new Dictionary<int, CallbackHandle>();
-    private NativeList<int> _buffer;
-    private static Stack<CallbackHandle> _stack = new Stack<CallbackHandle>();
-    private const int c_intialSize = 128;
-
-    public CallbackRegistry(NativeList<int> buffer)
+namespace Aikom.FunctionalAnimation
+{
+    internal class CallbackRegistry
     {
-        _isDirty = false;
-        _buffer = buffer;
-        for(int i = 0; i < c_intialSize; i++)
+        private static Dictionary<int, QuickActions> _callbacks = new Dictionary<int, QuickActions>();
+        private static Stack<QuickActions> _stack = new Stack<QuickActions>();
+
+        /// <summary>
+        /// Preallocates 
+        /// </summary>
+        /// <param name="allocSize"></param>
+        public static void Prime(int allocSize)
         {
-            _callbacks.Add(_runningIndex, new CallbackHandle(null, false, _runningIndex));
-            _runningIndex++;
+            var arr = new QuickActions[allocSize];
+            for(int i = 0; i < arr.Length; i++)
+            {
+                arr[i] = new QuickActions();
+            }
+            _stack = new Stack<QuickActions>(arr);
         }
 
-        UpdateManager.RegisterObject(this);
-    }
-
-    public void OnUpdate()
-    {
-        if(!_isDirty)
-            return;
-
-        for(int i = 0; i < _buffer.Length; i++)
+        /// <summary>
+        /// Registers a callback with interpolators ID
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <typeparam name="D"></typeparam>
+        /// <param name="id"></param>
+        /// <param name="callback"></param>
+        /// <param name="owner"></param>
+        /// <param name="flag"></param>
+        public static void RegisterCallback<T, D>(int id, Action<T> callback, D owner, EventFlags flag)
+            where T : struct
+            where D : class
         {
-            if (_callbacks.TryGetValue(_buffer[i], out var handle))
+            if (callback == null)
+                return;
+
+            // Gets a free one from the pool
+            if (!_callbacks.ContainsKey(id) && _stack.TryPop(out var handle))
+            {   
+                handle.Clear();
+                handle.Add(callback, owner, flag);
+                _callbacks.Add(id, handle);
+            }
+            // Adds flags into an existing handle
+            else if (_callbacks.TryGetValue(id, out var existingHandle))
             {
-                handle.Callback.Invoke();
-                if (!handle.IsPersistent)
-                    _stack.Push(handle);
+                existingHandle.Add(callback, owner, flag);
+            }
+            // Creates a new handle
+            else
+            {
+                var handler = new QuickActions();
+                handler.Add(callback, owner, flag);
+                _callbacks.Add(id, handler);
             }
         }
 
-        _buffer.Clear();
-        _isDirty = false;
-    }
-
-    internal static void SetDirty() => _isDirty = true;
-
-    public static int RegisterCallback(Action callback, bool isPersistent)
-    {
-        if (callback == null)
-            return 0;
-
-        if(_stack.TryPop(out var handle))
+        /// <summary>
+        /// Calls all valid flagged callbacks if there are active recievers
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="activeFlags"></param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void TryCall<T>(FlagIndexer<T> activeFlags) where T : struct
         {
-            _callbacks[handle.Id] = handle;
-            handle.Callback = callback;
-            handle.IsPersistent = isPersistent;
-            return _runningIndex;
+            if (_callbacks.TryGetValue(activeFlags.Id, out var action))
+            {
+                action.Invoke(activeFlags);
+            }
         }
-        _callbacks.Add(_runningIndex, new CallbackHandle(callback, isPersistent, _runningIndex));
-        _runningIndex++;
-        return _runningIndex;
-    }
 
-    public void Dispose()
-    {   
-        if(_buffer.IsCreated)
-            _buffer.Dispose();
-        _runningIndex = 0;
-        _callbacks.Clear();
-        _stack.Clear();
-    }
-
-    private class CallbackHandle
-    {
-        public Action Callback;
-        public bool IsPersistent;
-        public int Id;
-
-        public CallbackHandle(Action cb, bool persist, int id)
+        /// <summary>
+        /// Removes all callback handles associated with this ID
+        /// </summary>
+        /// <param name="id"></param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void UnregisterCallbacks(int id)
         {
-            Callback = cb;
-            IsPersistent = persist;
-            Id = id;
+            if (_callbacks.TryGetValue(id, out var handle))
+            {
+                _callbacks.Remove(id);
+                _stack.Push(handle);
+            }
         }
     }
 }
+

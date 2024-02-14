@@ -8,7 +8,7 @@ namespace Aikom.FunctionalAnimation
     /// Interpolator class that can store and control values independently
     /// </summary>
     /// <typeparam name="T"></typeparam>
-    public class Interpolator<T> where T : struct, IEquatable<T>
+    public class Interpolator<T> where T : struct
     {   
         public enum Status { Running, Stopped, Paused }
 
