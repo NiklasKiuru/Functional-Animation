@@ -4,14 +4,15 @@ using Unity.Burst;
 using Unity.Mathematics;
 using UnityEngine;
 
+// Credits to easings.net for some of the basic easing functions
+
 namespace Aikom.FunctionalAnimation
 {
     /// <summary>
     /// Collection of interpolation and easing functions
-    /// Credits to easings.net for some of the basic easing functions
     /// </summary>
     [BurstCompile]
-    public struct EF
+    public partial struct EF
     {
         #region Easing functions
 

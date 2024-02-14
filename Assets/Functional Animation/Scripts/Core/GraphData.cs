@@ -74,16 +74,26 @@ namespace Aikom.FunctionalAnimation
         public RangedFunction[] GetRangedFunctionArray()
         {   
             var array = new RangedFunction[_functions.Length];
-            for (int i = 0; i < _functions.Length; i++)
+            GetRangedFunctionsNonAlloc(ref array);
+            return array;
+        }
+
+        /// <summary>
+        /// Gets the ranged functions stored in this graph without allocating a new array
+        /// </summary>
+        /// <remarks>This function does not guarantee that the index stays inside the given array</remarks>
+        /// <param name="arr"></param>
+        public void GetRangedFunctionsNonAlloc(ref RangedFunction[] arr, int startingIndex = 0)
+        {
+            for(int i = 0; i < _functions.Length; ++i)
             {
-                array[i] = new RangedFunction
+                arr[i + startingIndex] = new RangedFunction 
                 {
                     Pointer = EditorFunctions.Pointers[_functions[i]],
                     Start = _timeline.Nodes[i],
                     End = _timeline.Nodes[i + 1]
                 };
             }
-            return array;
         }
 
         /// <summary>

@@ -5,7 +5,6 @@ namespace Aikom.FunctionalAnimation
 {
     public enum ExecutionStatus
     {   
-        Started,
         Running,
         Paused,
         Completed,

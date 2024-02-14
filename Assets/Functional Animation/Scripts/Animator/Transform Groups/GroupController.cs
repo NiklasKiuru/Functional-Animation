@@ -253,65 +253,10 @@ public class GroupController : IDisposable
             UnityEngine.Object.Destroy(_target.gameObject);
     }
 
-    /// <summary>
-    /// Resets the current animation
-    /// </summary>
-    internal void ResetCurrent()
-    {
-        for (int i = 0; i < _vectorInterpolators.Length; i++)
-        {
-            var interpolator = _vectorInterpolators[i];
-            if (interpolator == null)
-                continue;
-            interpolator.Reset();
-        }
-    }
 
-    /// <summary>
-    /// Resets current property values into initial state
-    /// </summary>
-    /// <param name="prop"></param>
-    internal void ResetProperty(TransformProperty prop)
-    {
-        if (_vectorInterpolators[(int)prop] == null)
-            return;
-        _vectorInterpolators[(int)prop].Reset();
-    }
 
-    /// <summary>
-    /// Overrides the runtime target value for a specific axis and property
-    /// If selected axis is the final axis, the value will be applied to all three dimensional axis
-    /// </summary>
-    /// <param name="prop"></param>
-    /// <param name="axis"></param>
-    /// <param name="value"></param>
-    public void OverrideTarget(TransformProperty prop, Axis axis, float value)
-    {
-        if (!_isActive || _animationChecks[(int)prop, (int)axis])
-        {
-            if (axis == Axis.W)
-            {
-                var vec = new Vector3(value, value, value);
-                OverrideTarget(prop, vec);
-                return;
-            }
-            var current = _vectorInterpolators[(int)prop].Target;
-            current[(int)axis] = value;
-            _vectorInterpolators[(int)prop].OverrideTarget(current, false);
-        }
-    }
 
-    /// <summary>
-    /// Overrides the runtime target value for a specific property as long as there is no axis separation
-    /// </summary>
-    /// <param name="prop"></param>
-    /// <param name="value"></param>
-    public void OverrideTarget(TransformProperty prop, Vector3 value)
-    {
-        if (!_isActive || _animationChecks[(int)prop, (int)Axis.W])
-            return;
-        _vectorInterpolators[(int)prop].OverrideTarget(value, false);
-    }
+
 
     private Func<float, Vector3, Vector3, Vector3> IncrimentAll(Func<float, float> ease)
     {

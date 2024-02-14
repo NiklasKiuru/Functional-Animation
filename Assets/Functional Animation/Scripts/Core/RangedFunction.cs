@@ -28,7 +28,7 @@ namespace Aikom.FunctionalAnimation
             End = end;
         }
 
-        public RangedFunction(Function function = Function.Linear)
+        public RangedFunction(Function function)
         {
             Pointer = EditorFunctions.Pointers[function];
             Start = float2.zero;

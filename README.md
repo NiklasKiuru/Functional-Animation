@@ -4,10 +4,6 @@
  Simple tween- style animator system with function graphing UI tool to visually manipulate used easing functions and the ability
  to save used animations as assets.
 
-## Why does this package exist?
-Yes, Unity does have its own Animation Graph and Animator you can make animations using said graph but because of its versatility and focus on complex 3D animations it doesn't perform well on animating multiple objects with simple animations all at once. Second, I've personally always had issues coming up with a graph that gives a natural feeling movement and wanted a system 
-where you can just pick a well defined easing function and use that inside the graph instead.
-
 ## Features
 * Create, modify and save animations with graph UI. No coding needed
 * Create synchronized animation groups for repeating a single animation on multiple objects
@@ -31,6 +27,7 @@ Manipulate graph data visually in the editor
 	- The handle shows the current time of the node (X) and its value (Y)
 
 <img src="https://github.com/NiklasKiuru/Functional-Animation/blob/main/Documentation/graph_drag.gif" width="800">
+
 > Note that each graph always has a locked starting and ending time (0 , 1)
 
 ### Animation properties
@@ -112,29 +109,6 @@ EFAnimator.RemoveFromTransformGroup(transform, s_groupHash);
 
 ```
 
-### Callbacks and Query system
-> NOTE: The implimentation of callback and query system is currently nonfunctional
-
-All EF transform animations have various callback methods available via `IInterpolatorHandle<T>` but for performance reasons
-there is only one sender per group and there is no way to bind callbacks for individual objects in the group as of now making them not that useful.
-
-Instead you can query an object from a group by its position with `IGroupControlHandle`. You can either cache the handle in the group creation or you can 
-ask for the handle from the animator directly:
-
-```cs
-private Transform _closestObj;
-
-void GetClosestObject(){
-	var position = transform.position;
-	var handle = EFAnimator.GetGroupHandle("MyExampleGroup");
-	handle.Query<Position>(position, (t) => _closestObj = t);
-}
-
-```
-
-The query is finished based on at which point in time it was started relative to the groups update status. At earliest it will complete before the end of the current frame
-and the latest same time next frame.
-
 ### Performance and optimizations
 Running a single transform group with even thousands of objects is fairly light especially compared to more traditional methods but as is with dealing with massive amounts of game objects there are some limitations.
 * In high volumes avoid using colliders and rigidbodies on group objects
@@ -147,4 +121,44 @@ Running a single transform group with even thousands of objects is fairly light 
 
 You can also change the execution order of EFAnimator to update before all other scripts to guarantee the most amount of time possible for the jobs to complete.
 You can do this from Edit -> Project Settings -> Script Execution Order.
+
+## General tweening
+Aside from running Transform animations and groups the `EFAnimator` works as a general purpose tweening engine. It currently supports four different value types: float, float2, float3 and float4.
+Note that all unity vector types support implicit conversions between these Unity.math types.
+
+### Creating tweens
+Tweens as they are usually called fall under an interface of type `IInterpolator<T>` where T defines the base value type to be used in interpolation. 
+You can create an active interpolator with various `EF.Create()` methods. This method only tells the processor group to start calculating the defined values in the interpolator.
+To make it do something you have to define what should happen when the value updates like so:
+
+```cs
+float _myValue;
+
+EF.Create(from, to, duration, Function.EaseOut)
+	.OnUpdate(this, (v) => _myValue = v);
+
+```
+
+Do NOT call `EF.Create()` or `OnUpdate` methods in unity's on update cycle every frame. These methods are supposed to be used fire and forget style.
+Once the `EF.Create()` has been called it returns a process handle which is recommended to cache locally for possible future use.
+With this handle you can access some process data, set event callbacks or control the process itself.
+
+* Set state explicitly
+	- `IInterpolatorHandle<T>.Pause()`: Pauses the process untill either `Resume`, `Complete` or `Kill` is called with the same handle
+	- `IInterpolatorHandle<T>.Resume()`: Resumes the process from previous state
+	- `IInterpolatorHandle<T>.Complete()`: Marks the process as completed. This will not guarantee the process to reach its desired value.
+	All call targets for OnComplete will be fired and the process will end with its current value. Depending on execution order the actual removal process
+	might happen next frame instead of right this frame.
+	- `IInterpolatorHandle<T>.Kill()`: Kills the process immediatly and does not fire OnComplete.
+
+* Set callbacks
+	- `IInterpolatorHandle<T>.OnStart()`: Fires when the process initially starts. (Currently after the first execution cycle. Might change this in the future)
+	- `IInterpolatorHandle<T>.OnPause()`: Fires every time the process is paused
+	- `IInterpolatorHandle<T>.OnComplete()`: Fired when the process has completed.
+	- `IInterpolatorHandle<T>.OnUpdate()`: Fired every time the value is recalculated (once per frame).
+
+* Get data
+	- `IInterpolatorHandle<T>.GetValue()`: Gets the current calculation value. It is recommended not to use this method frequently and to use `OnUpdate()` callback in frequent queries.
+	- `IInterpolatorHandle<T>.IsAlive`: States whether the process is still alive. (There is currently a bug with this where the state does not update properly)
+	- `IInterpolatorHandle<T>.Id`: Used process Id
 
