@@ -7,6 +7,7 @@
 ## Features
 * Create, modify and save animations with graph UI. No coding needed
 * Create synchronized animation groups for repeating a single animation on multiple objects
+* General purpose tweening engine
 * Extensions for MonoBehaviours
 * High performance with C# jobs and Burst
 
@@ -26,7 +27,7 @@ Manipulate graph data visually in the editor
 	- Edit each functions starting and ending values and positions
 	- The handle shows the current time of the node (X) and its value (Y)
 
-<img src="https://github.com/NiklasKiuru/Functional-Animation/blob/main/Documentation/graph_drag.gif" width="800">
+<img src="https://github.com/NiklasKiuru/Functional-Animation/blob/main/Documentation/graph_drag.gif">
 
 > Note that each graph always has a locked starting and ending time (0 , 1)
 
@@ -126,8 +127,7 @@ You can do this from Edit -> Project Settings -> Script Execution Order.
 Aside from running Transform animations and groups the `EFAnimator` works as a general purpose tweening engine. It currently supports four different value types: float, float2, float3 and float4.
 Note that all unity vector types support implicit conversions between these Unity.math types.
 
-### Creating tweens
-Tweens as they are usually called fall under an interface of type `IInterpolator<T>` where T defines the base value type to be used in interpolation. 
+### Creating interpolators
 You can create an active interpolator with various `EF.Create()` methods. This method only tells the processor group to start calculating the defined values in the interpolator.
 To make it do something you have to define what should happen when the value updates like so:
 
@@ -139,26 +139,113 @@ EF.Create(from, to, duration, Function.EaseOut)
 
 ```
 
-Do NOT call `EF.Create()` or `OnUpdate` methods in unity's on update cycle every frame. These methods are supposed to be used fire and forget style.
+The first parameter in OnUpdate is the object reference you want to tie the life time of the process to. For Unity objects this avoids scenarios where the object
+has already been destroyed while the callback wants to set its parameters.
+Do NOT call `EF.Create()` or `OnUpdate` methods in unity's update cycle every frame. These methods are supposed to be used fire and forget style.
+
+Interpolators can be created by using either easing functions, ranged functions or graphs but under the hood all processes work with ranged functions.
+```cs
+GraphData _customGraph;
+RangedFunction _customFunction;
+Function _easingFunction;
+
+// Note that an empty graph is a linear function from 0 to 1
+_customGraph = new GraphData();		
+
+// Adds a new function that starts at 0.5 and ends with a value 0
+_customGraph.AddFunction(Function.Linear, new Vector2(0.5f, 0));	
+
+// Starts from initial value and sets the ending value as 80% from target
+_rangedFunction = new RangedFunction(Function.EaseInBounce, 0, 0.8f);	
+
+// The same as new RangedFunction(Function.EaseInExp, 0, 1)
+_easingFunction = Function.EaseInExp;	
+
+EF.Create(from, to, duration, _easingFunction);
+EF.Create(from, to, duration, _customFunction);
+EF.Create(from, to, duration, _customGraph);
+
+```
+
+Most vector type interpolators support axis selection methods where each axis can be interpolated with their own separate functions without declaring a new tween for each axis separately.
+Note that some of these methods can create some data for garbage collector but only on initialization.
+
+```cs
+bool3 _mySelectedAxis;
+Func3 _functions;
+
+// Defines used functions per axis
+_functions = new Func3(Function.EasOutExp, Function.Linear, Function.EaseInOutBounce);
+
+// Selects only X and Z axis to be used in calculations
+_mySelectedAxis = new bool3(true, false, true);
+
+// Note that since Y axis is not taken into account the value retrieved will be the same as "from.y"
+EF.Create(from, to, duration, _functions, _mySelectedAxis)
+	.OnUpdate(this, (v) => transform.position = v);
+
+// To avoid locking the axis into this position you can work around it like this
+EF.Create(from, to, duration, _functions, _mySelectedAxis)
+	.OnUpdate(this, (v) => { 
+			var newVec = new Vector3(v.x, transform.position.y, v.z);
+			transform.position = newVec;
+		})
+
+```
+
+The last example for avoiding locking the axis value is fine in most cases but will be a better and more efficient way to do this by assigning the interpolator into a special processor group
+that handles transforms directly via Unitys `TransformAccesArray`.
+
+### Controlling tweens
 Once the `EF.Create()` has been called it returns a process handle which is recommended to cache locally for possible future use.
-With this handle you can access some process data, set event callbacks or control the process itself.
+With this handle you can access some process data, set event callbacks or control the process itself. The following example creates a process with a looping linear interpolation
+that sets the current position of the object between its current position and `_myVec`. If the process pauses it checks if the current X coordinate is not 0 and disables the gameObject.
+Finally everytime the process is resumed the object is enabled and the process is set to start from Pause state.
+
+```cs
+Vector3 _myVec;
+IInterpolationHandle<float3> _handle;
+
+_handle = EF.Create(transform.position, _myVec, duration, Function.Linear, TimeControl.Loop)
+	.OnUpdate(this, (v) => transform.position = v)
+	.OnPause(this, (v) => { if(v.x != 0) gameObject.SetActive(false); })
+	.OnResume(this, (v) => gameObject.SetActive(true))
+	.Pause();
+
+```
+
+Available `IInterpolationHandle<T>` extensions and properties:
 
 * Set state explicitly
-	- `IInterpolatorHandle<T>.Pause()`: Pauses the process untill either `Resume`, `Complete` or `Kill` is called with the same handle
-	- `IInterpolatorHandle<T>.Resume()`: Resumes the process from previous state
-	- `IInterpolatorHandle<T>.Complete()`: Marks the process as completed. This will not guarantee the process to reach its desired value.
+	- `Pause()`: Pauses the process untill either `Resume`, `Complete` or `Kill` is called with the same handle
+	- `Resume()`: Resumes the process from previous state
+	- `Complete()`: Marks the process as completed. This will not guarantee the process to reach its desired value.
 	All call targets for OnComplete will be fired and the process will end with its current value. Depending on execution order the actual removal process
 	might happen next frame instead of right this frame.
-	- `IInterpolatorHandle<T>.Kill()`: Kills the process immediatly and does not fire OnComplete.
+	- `Kill()`: Kills the process immediatly and does not fire OnComplete.
 
 * Set callbacks
-	- `IInterpolatorHandle<T>.OnStart()`: Fires when the process initially starts. (Currently after the first execution cycle. Might change this in the future)
-	- `IInterpolatorHandle<T>.OnPause()`: Fires every time the process is paused
-	- `IInterpolatorHandle<T>.OnComplete()`: Fired when the process has completed.
-	- `IInterpolatorHandle<T>.OnUpdate()`: Fired every time the value is recalculated (once per frame).
+	- `OnStart()`: Fires when the process initially starts. (Currently after the first execution cycle. Might change this in the future)
+	- `OnPause()`: Fires every time the process is paused
+	- `OnComplete()`: Fired when the process has completed.
+	- `OnUpdate()`: Fired every time the value is recalculated (once per frame).
 
 * Get data
-	- `IInterpolatorHandle<T>.GetValue()`: Gets the current calculation value. It is recommended not to use this method frequently and to use `OnUpdate()` callback in frequent queries.
-	- `IInterpolatorHandle<T>.IsAlive`: States whether the process is still alive. (There is currently a bug with this where the state does not update properly)
-	- `IInterpolatorHandle<T>.Id`: Used process Id
+	- `GetValue()`: Gets the current calculation value. It is recommended not to use this method frequently and to use `OnUpdate()` callback in frequent queries.
+	- `IsAlive`: States whether the process is still alive. (There is currently a bug with this where the state does not update properly)
+	- `Id`: Used process Id
 
+> Note: While debugging the "Current" value in the handle shown in the debugger will always show a default value
+
+### Lifetime
+Interpolators can be created with three different time controls:
+
+| Control  | Description |
+| ------------- | ------------- |
+| PlayOnce  | Plays the transition once and kills the process  |
+| Loop  | Loops the transition indefinetely  |
+| PingPong | Reverses the loop at each end point |
+
+If a process is meant to play only once the process group will automatically discard it once it completes.
+Currently the only way to guarantee the ending of a looping processes is to kill them manually with either `Kill()` or `Complete()` commands.
+In the future all Unity objects should automatically kill processes started from the object.
