@@ -92,7 +92,7 @@ namespace Aikom.FunctionalAnimation
                 if (dataPoint.Clock.Time == 0 && (dataPoint.PassiveFlags & EventFlags.OnStart) == EventFlags.OnStart)
                     dataPoint.ActiveFlags |= EventFlags.OnStart;
                 var time = dataPoint.Clock.Tick(delta);
-                var newVal = dataPoint.Current;
+                var newVal = dataPoint.From;
                 for (int axis = 0; axis < 4; axis++)
                 {
                     if (!dataPoint.AxisCheck[axis])
@@ -161,7 +161,7 @@ namespace Aikom.FunctionalAnimation
                 if (dataPoint.Clock.Time == 0 && (dataPoint.PassiveFlags & EventFlags.OnStart) == EventFlags.OnStart)
                     dataPoint.ActiveFlags |= EventFlags.OnStart;
                 var time = dataPoint.Clock.Tick(delta);
-                var newVal = dataPoint.Current;
+                var newVal = dataPoint.From;
                 for (int axis = 0; axis < 3; axis++)
                 {
                     if (!dataPoint.AxisCheck[axis])
@@ -226,7 +226,7 @@ namespace Aikom.FunctionalAnimation
                 if (dataPoint.Clock.Time == 0 && (dataPoint.PassiveFlags & EventFlags.OnStart) == EventFlags.OnStart)
                     dataPoint.ActiveFlags |= EventFlags.OnStart;
                 var time = dataPoint.Clock.Tick(delta);
-                var newVal = dataPoint.Current;
+                var newVal = dataPoint.From;
                 for (int axis = 0; axis < 2; axis++)
                 {
                     if (!dataPoint.AxisCheck[axis])

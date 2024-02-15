@@ -82,6 +82,24 @@ namespace Aikom.FunctionalAnimation
         }
 
         /// <summary>
+        /// Registers a callback that is invoked once the process is paused
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <typeparam name="D"></typeparam>
+        /// <param name="handle"></param>
+        /// <param name="owner"></param>
+        /// <param name="callback"></param>
+        /// <returns></returns>
+        public static IInterpolatorHandle<T> OnPause<T, D>(this IInterpolatorHandle<T> handle, D owner, Action<T> callback)
+            where T : unmanaged
+            where D : class
+        {
+            CallbackRegistry.RegisterCallback(handle.Id, callback, owner, EventFlags.OnPause);
+            EFAnimator.SetPassiveFlagsExternal(ref handle, EventFlags.OnPause);
+            return handle;
+        }
+
+        /// <summary>
         /// Pauses the interpolation untill <see cref="Resume{T}(IInterpolatorHandle{T})"/> is called or the process is killed
         /// </summary>
         /// <typeparam name="T"></typeparam>

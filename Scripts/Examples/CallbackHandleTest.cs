@@ -23,8 +23,14 @@ public class CallbackHandleTest : MonoBehaviour
 
             _handles.Add(handle);
         }
+        var pausePos = Vector3.zero;
         var newObj = new GameObject("Test");
-        _vectorHandle = newObj.transform.TransitionLoop(TransformProperty.Position, Function.EaseOutExp, 3, Vector3.one);
+        _vectorHandle = newObj.transform.TransitionLoop(TransformProperty.Position, Function.EaseOutExp, 3, Vector3.one)
+            .OnComplete(this, (v) => { 
+                var newVec = new Vector3(v.x, transform.position.y, v.z);
+                transform.position = newVec;
+            });
+            
     }
 
     private void Test(float t)
