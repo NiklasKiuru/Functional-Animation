@@ -7,8 +7,13 @@ namespace Aikom.FunctionalAnimation
     public class IndexPool
     {
         private HashSet<int> _indeces = new();
-        private Stack<int> _unusedIndeces = new Stack<int>();
+        private Stack<int> _unusedIndeces;
         private int _count = 0;
+
+        public IndexPool(int preAlloc)
+        {
+            _unusedIndeces = new Stack<int>(preAlloc);
+        }
 
         public int GetNewId()
         {

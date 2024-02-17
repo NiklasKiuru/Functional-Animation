@@ -68,12 +68,12 @@ namespace Aikom.FunctionalAnimation
         }
 
         /// <summary>
-        /// Returns a pointer array of the functions in this graph data
+        /// Returns a ranged function array of the functions in this graph data. The array is always the max function buffer size defined in <see cref="EFSettings"/> 
         /// </summary>
         /// <returns></returns>
         public RangedFunction[] GetRangedFunctionArray()
         {   
-            var array = new RangedFunction[_functions.Length];
+            var array = new RangedFunction[EFSettings.MaxFunctions];
             GetRangedFunctionsNonAlloc(ref array);
             return array;
         }
@@ -85,7 +85,8 @@ namespace Aikom.FunctionalAnimation
         /// <param name="arr"></param>
         public void GetRangedFunctionsNonAlloc(ref RangedFunction[] arr, int startingIndex = 0)
         {
-            for(int i = 0; i < _functions.Length; ++i)
+            int max = Mathf.Max(arr.Length, _functions.Length);
+            for(int i = 0; i < max; ++i)
             {
                 arr[i + startingIndex] = new RangedFunction 
                 {

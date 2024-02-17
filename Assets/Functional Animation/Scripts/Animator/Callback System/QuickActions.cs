@@ -34,20 +34,20 @@ namespace Aikom.FunctionalAnimation
         /// <typeparam name="T"></typeparam>
         /// <param name="activeFlags"></param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Invoke<T>(in FlagIndexer<T> activeFlags) where T : struct
+        public void Invoke<T>(in EventData<T> activeFlags) where T : struct
         {
             if ((activeFlags.Flags & EventFlags.OnStart) == EventFlags.OnStart)
                 _onStart.InvokeAll(activeFlags.Value);
-            if ((activeFlags.Flags & EventFlags.OnComplete) == EventFlags.OnComplete)
-                _onComplete.InvokeAll(activeFlags.Value);
             if ((activeFlags.Flags & EventFlags.OnUpdate) == EventFlags.OnUpdate)
                 _onUpdate.InvokeAll(activeFlags.Value);
-            if ((activeFlags.Flags & EventFlags.OnKill) == EventFlags.OnKill)
-                _onKill.InvokeAll(activeFlags.Value);
-            if ((activeFlags.Flags & EventFlags.OnResume) == EventFlags.OnResume)
-                _onResume.InvokeAll(activeFlags.Value);
             if ((activeFlags.Flags & EventFlags.OnPause) == EventFlags.OnPause)
                 _onPause.InvokeAll(activeFlags.Value);
+            if ((activeFlags.Flags & EventFlags.OnResume) == EventFlags.OnResume)
+                _onResume.InvokeAll(activeFlags.Value);
+            if ((activeFlags.Flags & EventFlags.OnComplete) == EventFlags.OnComplete)
+                _onComplete.InvokeAll(activeFlags.Value);
+            if ((activeFlags.Flags & EventFlags.OnKill) == EventFlags.OnKill)
+                _onKill.InvokeAll(activeFlags.Value);
         }
 
         /// <summary>

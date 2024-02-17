@@ -193,7 +193,7 @@ EF.Create(from, to, duration, _functions, _mySelectedAxis)
 
 ```
 
-The last example for avoiding locking the axis value is fine in most cases but will be a better and more efficient way to do this by assigning the interpolator into a special processor group
+The last example for avoiding locking the axis value is fine in most cases but there will be a better and more efficient way to do this in the future by assigning the interpolator into a special processor group
 that handles transforms directly via Unitys `TransformAccesArray`.
 
 ### Controlling tweens
@@ -214,7 +214,7 @@ _handle = EF.Create(transform.position, _myVec, duration, Function.Linear, TimeC
 
 ```
 
-Available `IInterpolationHandle<T>` extensions and properties:
+Available `IInterpolatorHandle<T>` extensions and properties:
 
 * Set state explicitly
 	- `Pause()`: Pauses the process untill either `Resume`, `Complete` or `Kill` is called with the same handle
@@ -222,7 +222,7 @@ Available `IInterpolationHandle<T>` extensions and properties:
 	- `Complete()`: Marks the process as completed. This will not guarantee the process to reach its desired value.
 	All call targets for OnComplete will be fired and the process will end with its current value. Depending on execution order the actual removal process
 	might happen next frame instead of right this frame.
-	- `Kill()`: Kills the process immediatly and does not fire OnComplete.
+	- `Kill()`: Kills the process immediately and does not fire OnComplete.
 
 * Set callbacks
 	- `OnStart()`: Fires when the process initially starts. (Currently after the first execution cycle. Might change this in the future)

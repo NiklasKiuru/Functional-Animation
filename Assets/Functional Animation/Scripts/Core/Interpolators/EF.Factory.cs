@@ -23,33 +23,37 @@ namespace Aikom.FunctionalAnimation
                 From = from,
                 To = to,
                 Clock = new Clock(1 / duration, ctrl),
-                Length = 1
+                Stride = 1
             };
-            var func = new RangedFunction(ease);
-            return EFAnimator.RegisterTarget<float, FloatInterpolator>(ref processor, func);
+            var array = new RangedFunction[EFSettings.MaxFunctions];
+            array[0] = new RangedFunction(ease);
+            var func = new FunctionContainer(1, array);
+            return EFAnimator.RegisterTarget<float, FloatInterpolator>(processor, func);
         }
 
         /// <summary>
-        /// Creates a basic transition interpolator using ranged functions
+        /// Creates a basic transition interpolator using a ranged function
         /// </summary>
         /// <param name="from"></param>
         /// <param name="to"></param>
         /// <param name="duration"></param>
         /// <param name="funcs"></param>
         /// <param name="ctrl"></param>
-        /// <returns>If given ranged function array is invalid, return null</returns>
-        public static IInterpolatorHandle<float> Create(float from, float to, float duration, RangedFunction[] funcs, TimeControl ctrl = TimeControl.PlayOnce)
+        /// <returns></returns>
+        public static IInterpolatorHandle<float> Create(float from, float to, float duration, RangedFunction func, TimeControl ctrl = TimeControl.PlayOnce)
         {   
-            if(funcs == null || funcs.Length == 0)
-                return null;
             var processor = new FloatInterpolator
             {
                 From = from,
                 To = to,
                 Clock = new Clock(1 / duration, ctrl),
-                Length = funcs.Length
+                Stride = 1
             };
-            return EFAnimator.RegisterTarget<float, FloatInterpolator>(ref processor, funcs);
+
+            var array = new RangedFunction[EFSettings.MaxFunctions];
+            array[0] = func;
+            var funcs = new FunctionContainer(1, array);
+            return EFAnimator.RegisterTarget<float, FloatInterpolator>(processor, funcs);
         }
 
         /// <summary>
@@ -63,8 +67,17 @@ namespace Aikom.FunctionalAnimation
         /// <returns></returns>
         public static IInterpolatorHandle<float> Create(float from, float to, float duration, GraphData data, TimeControl ctrl = TimeControl.PlayOnce)
         {
-            var funcs = data.GetRangedFunctionArray();
-            return Create(from, to, duration, funcs, ctrl);
+            var processor = new FloatInterpolator
+            {
+                From = from,
+                To = to,
+                Clock = new Clock(1 / duration, ctrl),
+                Stride = data.Length
+            };
+
+            var array = data.GetRangedFunctionArray();
+            var funcs = new FunctionContainer(1, array);
+            return EFAnimator.RegisterTarget<float, FloatInterpolator>(processor, funcs);
         }
 
         /// <summary>
@@ -85,10 +98,11 @@ namespace Aikom.FunctionalAnimation
                 Stride = new int3(1, 1, 1),
                 AxisCheck = new bool3(true, true, true)
             };
-            var funcX = new RangedFunction(ease);
-            var funcY = new RangedFunction(ease);
-            var funcZ = new RangedFunction(ease);
-            return EFAnimator.RegisterTarget<float3, Vector3Interpolator>(ref processor, funcX, funcY, funcZ);
+            var funcContainer = new FunctionContainer(3);
+            funcContainer.Add(0, 0, new RangedFunction(ease));
+            funcContainer.Add(1, 0, new RangedFunction(ease));
+            funcContainer.Add(2, 0, new RangedFunction(ease));
+            return EFAnimator.RegisterTarget<float3, Vector3Interpolator>(processor, funcContainer);
         }
 
         /// <summary>
@@ -112,7 +126,10 @@ namespace Aikom.FunctionalAnimation
                 Stride = new int3(1, 1, 1),
                 AxisCheck = new bool3(true, true, true)
             };
-            return EFAnimator.RegisterTarget<float3, Vector3Interpolator>(ref processor, funcs);
+
+            var funcContainer = new FunctionContainer(3);
+
+            return EFAnimator.RegisterTarget<float3, Vector3Interpolator>(processor, funcContainer);
         }
 
         /// <summary>
@@ -171,7 +188,7 @@ namespace Aikom.FunctionalAnimation
                 Stride = new int3(lenX, lenY, lenZ),
                 AxisCheck = axisControl
             };
-            return EFAnimator.RegisterTarget<float3, Vector3Interpolator>(ref processor, arr);
+            return EFAnimator.RegisterTarget<float3, Vector3Interpolator>(processor, null);
         }
 
         /// <summary>
@@ -203,7 +220,7 @@ namespace Aikom.FunctionalAnimation
                 Stride = new int3(axisControl.x ? 1 : 0, axisControl.y ? 1 : 0, axisControl.z ? 1 : 0),
                 AxisCheck = axisControl
             };
-            return EFAnimator.RegisterTarget<float3, Vector3Interpolator>(ref processor, list.ToArray());
+            return EFAnimator.RegisterTarget<float3, Vector3Interpolator>(processor, null);
         }
     }
 }
