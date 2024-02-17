@@ -11,18 +11,19 @@ namespace Aikom.FunctionalAnimation
         /// <summary>
         /// Process id of this handle
         /// </summary>
-        public int Id
-        {
-            get
-            {
-                return this is IInterpolator<T> internalHandle ? internalHandle.InternalId : -1;
-            }
-        }
+        public int Id { get; internal set; }
 
         /// <summary>
         /// Alive status of the process
         /// </summary>
         public bool IsAlive { get; internal set; }
+
+        /// <summary>
+        /// Gets the current interpolation value of this handle process
+        /// </summary>
+        /// <remarks>It is not recommended to use this option frequently. 
+        /// For frequent updates use <see cref="OnUpdate{T, D}(IInterpolatorHandle{T}, D, Action{T})"/></remarks>
+        public T GetValue();
     }
 
     public static class HandleExtensions
@@ -42,6 +43,54 @@ namespace Aikom.FunctionalAnimation
         {
             CallbackRegistry.RegisterCallback(handle.Id, callback, owner, EventFlags.OnComplete);
             EFAnimator.SetPassiveFlagsExternal(ref handle, EventFlags.OnComplete);
+            return handle;
+        }
+
+        /// <summary>
+        /// Restarts the process. This can only be used on allocated processes
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="handle"></param>
+        /// <returns></returns>
+        public static IInterpolatorHandle<T> Restart<T>(this IInterpolatorHandle<T> handle) where T : unmanaged
+        {   
+            EFAnimator.RestartProcess(handle);
+            return handle;
+        }
+
+        /// <summary>
+        /// Registers a callback that is invoked once the process has been killed
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <typeparam name="D"></typeparam>
+        /// <param name="handle"></param>
+        /// <param name="owner"></param>
+        /// <param name="callback"></param>
+        /// <returns></returns>
+        public static IInterpolatorHandle<T> OnKill<T, D>(this IInterpolatorHandle<T> handle, D owner, Action<T> callback) 
+            where T : unmanaged
+            where D : class
+        {
+            CallbackRegistry.RegisterCallback(handle.Id, callback, owner, EventFlags.OnKill);
+            EFAnimator.SetPassiveFlagsExternal(ref handle, EventFlags.OnKill);
+            return handle;
+        }
+
+        /// <summary>
+        /// Registers a callback that is invoked once the process resumes
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <typeparam name="D"></typeparam>
+        /// <param name="handle"></param>
+        /// <param name="owner"></param>
+        /// <param name="callback"></param>
+        /// <returns></returns>
+        public static IInterpolatorHandle<T> OnResume<T, D>(this IInterpolatorHandle<T> handle, D owner, Action<T> callback)
+            where T : unmanaged
+            where D : class
+        {
+            CallbackRegistry.RegisterCallback(handle.Id, callback, owner, EventFlags.OnResume);
+            EFAnimator.SetPassiveFlagsExternal(ref handle, EventFlags.OnResume);
             return handle;
         }
 
@@ -104,10 +153,11 @@ namespace Aikom.FunctionalAnimation
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="handle"></param>
-        public static void Pause<T>(this IInterpolatorHandle<T> handle) where T : unmanaged
+        public static IInterpolatorHandle<T> Pause<T>(this IInterpolatorHandle<T> handle) where T : unmanaged
         {
-            CallbackRegistry.TryCall(new FlagIndexer<T>() { Id = handle.Id, Flags = EventFlags.OnPause, Value = handle.GetValue() });
+            CallbackRegistry.TryCall(new EventData<T>() { Id = handle.Id, Flags = EventFlags.OnPause, Value = handle.GetValue() });
             EFAnimator.ForceExecutionStatusExternal(ref handle, ExecutionStatus.Paused);
+            return handle;
         }
 
         /// <summary>
@@ -115,10 +165,11 @@ namespace Aikom.FunctionalAnimation
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="handle"></param>
-        public static void Resume<T>(this IInterpolatorHandle<T> handle) where T : unmanaged
+        public static IInterpolatorHandle<T> Resume<T>(this IInterpolatorHandle<T> handle) where T : unmanaged
         {
-            CallbackRegistry.TryCall(new FlagIndexer<T>() { Id = handle.Id, Flags = EventFlags.OnResume, Value = handle.GetValue() });
+            CallbackRegistry.TryCall(new EventData<T>() { Id = handle.Id, Flags = EventFlags.OnResume, Value = handle.GetValue() });
             EFAnimator.ForceExecutionStatusExternal(ref handle, ExecutionStatus.Running);
+            return handle;
         }
 
         /// <summary>
@@ -127,9 +178,10 @@ namespace Aikom.FunctionalAnimation
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="handle"></param>
-        public static void Complete<T>(this IInterpolatorHandle<T> handle) where T : unmanaged
+        public static IInterpolatorHandle<T> Complete<T>(this IInterpolatorHandle<T> handle) where T : unmanaged
         {
             EFAnimator.ForceExecutionStatusExternal(ref handle, ExecutionStatus.Completed);
+            return handle;
         }
 
         /// <summary>
@@ -137,29 +189,17 @@ namespace Aikom.FunctionalAnimation
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="handle"></param>
-        public static void Kill<T>(this IInterpolatorHandle<T> handle) where T : unmanaged
+        public static IInterpolatorHandle<T> Kill<T>(this IInterpolatorHandle<T> handle) where T : unmanaged
         {
             EFAnimator.KillTargetExternal(ref handle);
-        }
-
-        /// <summary>
-        /// Gets the current interpolation value of this handle process
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="handle"></param>
-        /// <returns></returns>
-        /// <remarks>It is not recommended to use this option frequently. 
-        /// For frequent updates use <see cref="OnUpdate{T, D}(IInterpolatorHandle{T}, D, Action{T})"/></remarks>
-        public static T GetValue<T>(this IInterpolatorHandle<T> handle) where T : unmanaged
-        {
-            return EFAnimator.GetValueExternal(ref handle);
+            return handle;
         }
     }
 }
 
 
 [Flags]
-public enum EventFlags
+public enum EventFlags : ushort
 {   
     None = 0,
     OnComplete = 1,

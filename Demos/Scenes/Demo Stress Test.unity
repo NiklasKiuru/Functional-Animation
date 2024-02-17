@@ -364,7 +364,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e8e2dbb39c82e1c4695e97a2947661f8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _target: {fileID: 1977943922}
+  _target: {fileID: 0}
   _count: 20
 --- !u!1 &705507993
 GameObject:
@@ -460,67 +460,6 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 1
   m_LocalEulerAnglesHint: {x: 50, y: -30, z: 0}
---- !u!1001 &872804952
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    m_TransformParent: {fileID: 0}
-    m_Modifications:
-    - target: {fileID: 2224417892967496647, guid: fd5f654f096dd7047b1ece1727a5f497, type: 3}
-      propertyPath: m_Name
-      value: Cube Prefab
-      objectReference: {fileID: 0}
-    - target: {fileID: 4259672302014566491, guid: fd5f654f096dd7047b1ece1727a5f497, type: 3}
-      propertyPath: m_Controller
-      value: 
-      objectReference: {fileID: 9100000, guid: fe1e489f710902f49a3dfc9feac3001f, type: 2}
-    - target: {fileID: 7748600590990722412, guid: fd5f654f096dd7047b1ece1727a5f497, type: 3}
-      propertyPath: m_RootOrder
-      value: 5
-      objectReference: {fileID: 0}
-    - target: {fileID: 7748600590990722412, guid: fd5f654f096dd7047b1ece1727a5f497, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 0.70000076
-      objectReference: {fileID: 0}
-    - target: {fileID: 7748600590990722412, guid: fd5f654f096dd7047b1ece1727a5f497, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 1.59
-      objectReference: {fileID: 0}
-    - target: {fileID: 7748600590990722412, guid: fd5f654f096dd7047b1ece1727a5f497, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 7748600590990722412, guid: fd5f654f096dd7047b1ece1727a5f497, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 7748600590990722412, guid: fd5f654f096dd7047b1ece1727a5f497, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 7748600590990722412, guid: fd5f654f096dd7047b1ece1727a5f497, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 7748600590990722412, guid: fd5f654f096dd7047b1ece1727a5f497, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 7748600590990722412, guid: fd5f654f096dd7047b1ece1727a5f497, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 7748600590990722412, guid: fd5f654f096dd7047b1ece1727a5f497, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 7748600590990722412, guid: fd5f654f096dd7047b1ece1727a5f497, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: fd5f654f096dd7047b1ece1727a5f497, type: 3}
 --- !u!1 &963194225
 GameObject:
   m_ObjectHideFlags: 0
@@ -721,8 +660,3 @@ MonoBehaviour:
   - {fileID: 0}
   _playOnAwake: 0
   _playAwakeName: Cool Cube
---- !u!1 &1977943922 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 2224417892967496647, guid: fd5f654f096dd7047b1ece1727a5f497, type: 3}
-  m_PrefabInstance: {fileID: 872804952}
-  m_PrefabAsset: {fileID: 0}

@@ -2,7 +2,6 @@ using UnityEngine;
 using Aikom.FunctionalAnimation;
 using System.Collections.Generic;
 using Unity.Mathematics;
-using Aikom.FunctionalAnimation.Extensions;
 
 public class CallbackHandleTest : MonoBehaviour
 {
@@ -12,6 +11,7 @@ public class CallbackHandleTest : MonoBehaviour
     private IInterpolatorHandle<float3> _vectorHandle;
     private int _targetIndex = 0;
     float _val = 0;
+    float _field;
 
     private void Start()
     {
@@ -22,15 +22,12 @@ public class CallbackHandleTest : MonoBehaviour
                 .OnComplete(this, Test);
 
             _handles.Add(handle);
+            _targetIndex++;
         }
-        var pausePos = Vector3.zero;
-        var newObj = new GameObject("Test");
-        _vectorHandle = newObj.transform.TransitionLoop(TransformProperty.Position, Function.EaseOutExp, 3, Vector3.one)
-            .OnComplete(this, (v) => { 
-                var newVec = new Vector3(v.x, transform.position.y, v.z);
-                transform.position = newVec;
-            });
-            
+        //var pausePos = Vector3.zero;
+        //var newObj = new GameObject("Test");
+        //_vectorHandle = newObj.transform.TransitionLoop(TransformProperty.Position, Function.EaseOutExp, 3, Vector3.one);
+
     }
 
     private void Test(float t)
@@ -41,12 +38,12 @@ public class CallbackHandleTest : MonoBehaviour
     private unsafe void Update()
     {   
         if(Input.GetMouseButtonDown(0))
-        {   
-            _handles[_targetIndex].Complete();
-            _targetIndex++;
+        {
+            _targetIndex--;
             _targetIndex = Mathf.Clamp(_targetIndex, 0, _amount);
-        }
+            _handles[_targetIndex].Restart();
             
+        }
+        
     }
-
 }

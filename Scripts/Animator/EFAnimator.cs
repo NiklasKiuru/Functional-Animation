@@ -1,3 +1,5 @@
+#undef USE_INDEX_SAFEGUARDS
+
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using UnityEngine;
@@ -33,26 +35,53 @@ namespace Aikom.FunctionalAnimation
         /// <param name="funcs"></param>
         /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static IInterpolatorHandle<T> RegisterTarget<T, D>(ref D processor, params RangedFunction[] funcs)
+        internal static IInterpolatorHandle<T> RegisterTarget<T, D>(D processor, FunctionContainer cont)
             where T : unmanaged
             where D : IInterpolator<T>
         {   
             var groupId = processor.GetGroupId();
-            if(_processGroups.TryGetValue(groupId, out var group))
+            processor.InternalId = _indexer.GetNewId();
+            processor.Status = ExecutionStatus.Running;
+            processor.IsAlive = true;
+            IInterpolatorHandle<T> wrapper = new HandleTracker<T>(processor, cont);
+            if (_processGroups.TryGetValue(groupId, out var group))
             {
-                processor.Status = ExecutionStatus.Running;
-                processor.IsAlive = true;
-                processor.InternalId = _indexer.GetNewId();
                 var implGroup = group as IProcessGroup<D>;  // This is dumb but mandatory
-                implGroup.Add(processor, funcs);
+                implGroup.Add(processor, cont);
+                processor.OnKill(_instance, (v) =>
+                {
+                    wrapper.IsAlive = false;
+#if USE_INDEX_SAFEGUARDS
+                    _indexer.Return(processor.InternalId);
+#endif
+                });
             }
             else
             {
-                processor.Status = ExecutionStatus.Completed;
-                processor.IsAlive = false;
-                processor.InternalId = -1;
+                wrapper.IsAlive = false;
             }
-            return processor;
+            return wrapper;
+        }
+
+        internal static void RegisterTargetNonAlloc<T, D>(ref D processor, FunctionContainer cont)
+            where T : unmanaged
+            where D : IInterpolator<T>
+        {
+            var groupId = processor.GetGroupId();
+            if (_processGroups.TryGetValue(groupId, out var group))
+            {
+                processor.InternalId = _indexer.GetNewId();
+                processor.Status = ExecutionStatus.Running;
+                processor.IsAlive = true;
+                var implGroup = group as IProcessGroup<D>;  // This is dumb but mandatory
+                implGroup.Add(processor, cont);
+#if USE_INDEX_SAFEGUARDS
+                processor.OnKill(_instance, (v) =>
+                {
+                    _indexer.Return(processor.InternalId);
+                });
+#endif
+            }
         }
 
         /// <summary>
@@ -64,10 +93,9 @@ namespace Aikom.FunctionalAnimation
         internal static void ForceExecutionStatusExternal<T>(ref IInterpolatorHandle<T> handle, ExecutionStatus status)
             where T : unmanaged
         {
-            var groupId = handle.GetGroupId();
-            if(_processGroups.TryGetValue(groupId, out var groupHandle))
+            if(TryGetValidGroup(handle, out var group))
             {
-                groupHandle.ForceExecutionStatus(handle.Id, status);
+                group.ForceExecutionStatus(handle.Id, status);
                 handle.IsAlive = status != ExecutionStatus.Completed;
             }
         }
@@ -81,10 +109,9 @@ namespace Aikom.FunctionalAnimation
         internal static void SetPassiveFlagsExternal<T>(ref IInterpolatorHandle<T> handle, EventFlags flag)
             where T : unmanaged
         {
-            var groupId = handle.GetGroupId();
-            if(_processGroups.TryGetValue(groupId, out var groupHandle))
+            if(TryGetValidGroup(handle, out var group))
             {
-                groupHandle.SetPassiveFlags(handle.Id, flag);
+                group.SetPassiveFlags(handle.Id, flag);
             }
         }
 
@@ -95,13 +122,11 @@ namespace Aikom.FunctionalAnimation
         /// <param name="handle"></param>
         internal static void KillTargetExternal<T>(ref IInterpolatorHandle<T> handle) where T : unmanaged
         {
-            var groupId = handle.GetGroupId();
-            if (_processGroups.TryGetValue(groupId, out var groupHandle))
-            {   
+            if (TryGetValidGroup(handle, out var group))
+            {
+                CallbackRegistry.TryCall(new EventData<T>() { Id = handle.Id, Flags = EventFlags.OnKill, Value = handle.GetValue() });
                 CallbackRegistry.UnregisterCallbacks(handle.Id);
-                groupHandle.ForceRemove(handle.Id);
-                _indexer.Return(handle.Id);
-                handle.IsAlive = false;
+                group.ForceRemove(handle.Id);
             }
         }
 
@@ -111,18 +136,43 @@ namespace Aikom.FunctionalAnimation
         /// <typeparam name="T"></typeparam>
         /// <param name="handle"></param>
         /// <returns></returns>
-        internal static T GetValueExternal<T>(ref IInterpolatorHandle<T> handle) where T : unmanaged
+        internal static T GetValueExternal<T, D>(D handle) 
+            where T : unmanaged
+            where D : IInterpolator<T>
         {
-            if(!handle.IsAlive)
-                return default;
-            var groupId = handle.GetGroupId();
-            if (_processGroups.TryGetValue(groupId, out var groupHandle))
+            if (TryGetValidGroup(handle, out var group)) 
             {   
-                var implHandle = groupHandle as IProcessGroup<IInterpolator<T>>;
+                var implHandle = group as IProcessGroup<D>;
                 return implHandle.GetValue(handle.Id).Current;
             }
             return default;
         }
+
+        internal static void RestartProcess<T>(IInterpolatorHandle<T> handle)
+            where T : unmanaged
+        {   
+            // Handle is still alive
+            if (TryGetValidGroup(handle, out var group))
+            {
+                group.RestartProcess(handle.Id);
+            }
+            else if(handle is HandleTracker<T> tracker)
+            {   
+                // Does nonAlloc internally so we need a new kill command
+                tracker.Restart();
+                tracker.OnKill(_instance, (v) => handle.IsAlive = false);
+            }
+        }
+
+        private static bool TryGetValidGroup<T>(IInterpolatorHandle<T> handle, out IProcessGroupHandle<IGroupProcessor> group)
+            where T : unmanaged
+        {   
+            group = null;
+            if (handle.IsAlive && _processGroups.TryGetValue(handle.GetGroupId(), out group))
+                return true;
+            return false;
+        }
+        
         #endregion
 
         #region Transform controllers
@@ -238,20 +288,29 @@ namespace Aikom.FunctionalAnimation
         /// </summary>
         private void OnInit()
         {
-            _indexer = new();
+            var prealloc = EFSettings.GroupAllocationSize;
+            _indexer = new(prealloc);
             _processGroups = new();
+            CallbackRegistry.Prime(prealloc);
 
-            IProcessGroup<FloatInterpolator> floatGroup = new FloatGroup(1024);
-            IProcessGroup<Vector2Interpolator> float2Group = new Float2Group(1024);
-            IProcessGroup<Vector3Interpolator> float3Group = new Float3Group(1024);
-            IProcessGroup<Vector4Interpolator> float4Group = new Float4Group(1024);
+            IProcessGroup<FloatInterpolator> floatGroup = new FloatGroup(prealloc);
+            IProcessGroup<Vector2Interpolator> float2Group = new Float2Group(prealloc);
+            IProcessGroup<Vector3Interpolator> float3Group = new Float3Group(prealloc);
+            IProcessGroup<Vector4Interpolator> float4Group = new Float4Group(prealloc);
 
             _processGroups.Add(floatGroup.GroupId, floatGroup);
             _processGroups.Add(float2Group.GroupId, float2Group);
             _processGroups.Add(float3Group.GroupId, float3Group);
             _processGroups.Add(float4Group.GroupId, float4Group);
 
-            CallbackRegistry.Prime(1024);
+            // Circumvents JIT compiler from having to compile in runtime
+            // This will prevent framedrops in first Add() or Remove() calls in process groups
+            foreach (var group in _processGroups.Values)
+            {
+                group.PrecompileJobAssemblies();
+            }
+
+            
 
             Application.quitting += Dispose;
         }

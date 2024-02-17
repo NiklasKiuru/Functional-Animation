@@ -66,7 +66,7 @@ namespace Aikom.FunctionalAnimation
         /// <typeparam name="T"></typeparam>
         /// <param name="activeFlags"></param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void TryCall<T>(FlagIndexer<T> activeFlags) where T : struct
+        public static void TryCall<T>(EventData<T> activeFlags) where T : struct
         {
             if (_callbacks.TryGetValue(activeFlags.Id, out var action))
             {

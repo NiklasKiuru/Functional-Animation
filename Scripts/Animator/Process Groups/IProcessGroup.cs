@@ -1,20 +1,16 @@
-using Aikom.FunctionalAnimation;
 using System;
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+
 namespace Aikom.FunctionalAnimation
 {   
     /// <summary>
     /// Generic implimentation for ProcessGroupHandles. Allows adding members explicitly
     /// </summary>
     /// <typeparam name="T"></typeparam>
-    public interface IProcessGroup<T> : IProcessGroupHandle<IGroupProcessor> 
-        where T : IGroupProcessor
+    public interface IProcessGroup<D> : IProcessGroupHandle<IGroupProcessor>
     {
         public int GroupId { get; }
-        public void Add(T val, RangedFunction[] funcs);
-        public T GetValue(int id);
+        public void Add(D val, FunctionContainer cont);
+        public D GetValue(int id);
     }
 
     /// <summary>
@@ -27,6 +23,8 @@ namespace Aikom.FunctionalAnimation
         public void SetPassiveFlags(int id, EventFlags flags);
         public void ForceExecutionStatus(int id, ExecutionStatus status);
         public void ForceRemove(int id);
+        public void PrecompileJobAssemblies();
+        public void RestartProcess(int id);
     }
 }
 
