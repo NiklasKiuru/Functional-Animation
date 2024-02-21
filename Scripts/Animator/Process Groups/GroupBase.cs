@@ -1,5 +1,6 @@
 #define USE_LOGS
 
+using System;
 using System.Runtime.CompilerServices;
 using Unity.Burst;
 using Unity.Collections;
@@ -67,7 +68,7 @@ namespace Aikom.FunctionalAnimation
             // No array resizing needed
             if(_addQue.TryDequeue(out var index))
             {
-                AddInternal(index, val, cont);
+                AddEntry(index, val, cont);
                 return;
             }
 
@@ -76,10 +77,10 @@ namespace Aikom.FunctionalAnimation
             _processors.ResizeArray(processPos * 2);
             _functions.ResizeArray(_functions.Length * 2);
             _events.ResizeArray(_events.Length * 2);
-            AddInternal(processPos, val, cont);
+            AddEntry(processPos, val, cont);
         }
 
-        private void AddInternal(int index, TBaseType val, FunctionContainer cont)
+        private void AddEntry(int index, TBaseType val, FunctionContainer cont)
         {
             _processors[index] = val;
             var start = index * EFSettings.MaxFunctions * Dimension;
@@ -90,7 +91,7 @@ namespace Aikom.FunctionalAnimation
                 _functions[i] = cont[contIndex];
                 contIndex++;
             }
-            _lookup.Add(val.InternalId, index);
+            _lookup.Add(val.Id, index);
         }
 
         /// <summary>
@@ -105,25 +106,23 @@ namespace Aikom.FunctionalAnimation
                 // Process internal has to be called before removing or calling listeners
                 // but it should be possible to combine all three processes into one 
                 // if the callback delegates could be used via pointers. This is slightly
-                // problematic due to unity objects behaviour after destroy calls but native
-                // C# classes should have no problems as long as the object reference itself
+                // problematic due to unity objects behaviour after destroy calls but
+                // C# CLR objects should have no problems as long as the object reference itself
                 // exists inside QuickActions query, hence pinning it from GC
-                //var hasEvents = ProcessInternal();
+
                 ProcessInternalJob();
-                var len = _processors.Length;
-                for (int i = 0; i < len; i++)
+                foreach(var idIndexPair in _lookup)
                 {
-                    var proc = _processors[i];
-                    var evt = _events[i];
+                    var proc = _processors[idIndexPair.Value];
+                    var evt = _events[idIndexPair.Value];
                     if (evt.Id != -1)
                         CallbackRegistry.TryCall(evt);
                     if (proc.Status == ExecutionStatus.Completed)
                     {
-                        CallbackRegistry.UnregisterCallbacks(proc.InternalId);
-                        _removeQue.Enqueue(proc.InternalId);
+                        CallbackRegistry.UnregisterCallbacks(proc.Id);
+                        _removeQue.Enqueue(proc.Id);
                     }
                 }
-
                 if (_removeQue.Count > 0)
                     RemoveBatched();
             }
@@ -139,6 +138,7 @@ namespace Aikom.FunctionalAnimation
                 Delta = Time.deltaTime
             };
             _processJob.Run();
+            //_processJob.Execute();    // For debug purposes
         }
 
         /// <summary>
@@ -153,8 +153,6 @@ namespace Aikom.FunctionalAnimation
             _removeQue.Dispose();
             _addQue.Dispose();
         }
-
-        protected unsafe abstract bool ProcessInternal();
 
         /// <summary>
         /// Sets passive flags for a process
@@ -235,7 +233,7 @@ namespace Aikom.FunctionalAnimation
             clock.Tick(1);
             temp.Clock = clock;
             FunctionContainer tempFunc = new FunctionContainer(Dimension);
-            tempFunc.Add(0, 0, new RangedFunction(Function.Linear));
+            tempFunc.Set(0, 0, new RangedFunction(Function.Linear));
             var handle = EFAnimator.RegisterTarget<TStruct, TBaseType>(temp, tempFunc);
             handle.OnStart(this, (v) => LogCalls(handle, "OnStartInit: "))
                 .OnUpdate(this, (v) => LogCalls(handle, "OnUpdateInit: "))
@@ -260,11 +258,32 @@ namespace Aikom.FunctionalAnimation
         /// <param name="id"></param>
         public void RestartProcess(int id)
         {
+            TryModifyValue(id, Restart);
+            static TBaseType Restart(TBaseType original)
+            {
+                original.Restart();
+                return original;
+            }
+        }
+
+        public void SetMaxLoopCount(int id, int count)
+        {
+            if (_lookup.TryGetValue(id, out var index))
+            {
+                var processor = _processors[index];
+                var clock = processor.Clock;
+                clock.MaxLoops = count;
+                processor.Clock = clock;
+                _processors[index] = processor;
+            }
+        }
+
+        private void TryModifyValue(int id, Func<TBaseType, TBaseType> action)
+        {
             if(_lookup.TryGetValue(id, out var index))
             {
                 var processor = _processors[index];
-                processor.Restart();
-                _processors[index] = processor;
+                _processors[index] = action(processor);
             }
         }
 
@@ -283,7 +302,7 @@ namespace Aikom.FunctionalAnimation
                     var index = Map[id];
                     var processor = Processors[index];
                     processor.Status = ExecutionStatus.Inactive;
-                    processor.InternalId = -1;
+                    processor.Id = -1;
                     Processors[index] = processor;
                     Map.Remove(id);
                     AddQue.Enqueue(index);
@@ -318,12 +337,12 @@ namespace Aikom.FunctionalAnimation
                     var clock = dataPoint.Clock;
                     var time = clock.Tick(Delta);
                     dataPoint.Clock = clock;
-                    var startingPoint = i * EFSettings.MaxFunctions;
                     for (int axis = 0; axis < dataPoint.AxisCount; axis++)
                     {
+                        var startingPoint = i * EFSettings.MaxFunctions * dataPoint.AxisCount;
+                        startingPoint += axis * EFSettings.MaxFunctions;
                         if (!dataPoint.IsValid(axis))
                             continue;
-                        startingPoint += axis * EFSettings.MaxFunctions;
                         var endingPoint = startingPoint + dataPoint.PointerCount(axis);
                         for (int j = startingPoint; j < endingPoint; j++)
                         {
@@ -340,23 +359,22 @@ namespace Aikom.FunctionalAnimation
                         }
 
                     }
-                    if (dataPoint.Clock.TimeControl == TimeControl.PlayOnce && time >= 1)
-                    {
-                        if ((dataPoint.PassiveFlags & EventFlags.OnComplete) == EventFlags.OnComplete)
-                            dataPoint.ActiveFlags |= EventFlags.OnComplete;
+                    if (dataPoint.Clock.CheckCompletion()) 
                         dataPoint.Status = ExecutionStatus.Completed;
-                    }
+
+                    // Complete cb check
                     if ((dataPoint.PassiveFlags & EventFlags.OnComplete) == EventFlags.OnComplete &&
                         dataPoint.Status == ExecutionStatus.Completed)
                         dataPoint.ActiveFlags |= EventFlags.OnComplete;
 
-                    var hasActiveFlags = dataPoint.ActiveFlags != EventFlags.None;
+                    // Overall flag check
                     if (dataPoint.Status == ExecutionStatus.Completed)
                         dataPoint.ActiveFlags |= EventFlags.OnKill;
+                    var hasActiveFlags = dataPoint.ActiveFlags != EventFlags.None;
                     var flagIndexer = Events[i];
                     if (hasActiveFlags)
                     {
-                        flagIndexer.Id = dataPoint.InternalId;
+                        flagIndexer.Id = dataPoint.Id;
                         flagIndexer.Flags = dataPoint.ActiveFlags;
                         flagIndexer.Value = dataPoint.Current;
                     }
@@ -364,7 +382,10 @@ namespace Aikom.FunctionalAnimation
                     {
                         flagIndexer.Id = -1;
                     }
+                    // Reset for next cycle
                     dataPoint.ActiveFlags = EventFlags.None;
+
+                    // Finalization
                     Processors[i] = dataPoint;
                     Events[i] = flagIndexer;
                 }

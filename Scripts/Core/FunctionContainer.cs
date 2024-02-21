@@ -1,9 +1,10 @@
 using Aikom.FunctionalAnimation;
+using System;
 using UnityEngine;
 
 namespace Aikom.FunctionalAnimation
 {
-    public class FunctionContainer
+    public class FunctionContainer : IDisposable
     {
         private int _dimension;
         private RangedFunction[] _array;
@@ -46,9 +47,35 @@ namespace Aikom.FunctionalAnimation
             _array = new RangedFunction[dimension * EFSettings.MaxFunctions];
         }
 
-        public void Add(int pos, int index, RangedFunction func)
+        public FunctionContainer(RangedFunction[] funcs, params int[] stride)
+        {
+            _dimension = stride.Length;
+            _array = new RangedFunction[_dimension * EFSettings.MaxFunctions];
+            var index = 0;
+            for(int i = 0; i < _dimension; i++)
+            {
+                for(int j = 0; j < stride[i]; j++)
+                {
+                    _array[i * EFSettings.MaxFunctions + j] = funcs[index];
+                    index++;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Sets a function into the correct position
+        /// </summary>
+        /// <param name="pos"></param>
+        /// <param name="index"></param>
+        /// <param name="func"></param>
+        public void Set(int pos, int index, RangedFunction func)
         {
             _array[(pos * EFSettings.MaxFunctions) + index] = func;
+        }
+
+        public void Dispose()
+        {
+            GC.SuppressFinalize(this);
         }
     }
 }

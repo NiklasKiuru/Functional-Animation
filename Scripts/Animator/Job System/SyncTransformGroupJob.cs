@@ -10,6 +10,7 @@ public struct SyncTransformGroupJob : IJobParallelForTransform
     [ReadOnly] public float3x3 CurrentValues;
     [ReadOnly] public float3x3 OriginValues;
     [ReadOnly] public bool3x4 AxisCheck;
+    [ReadOnly] public bool3 PropCheck;
 
     public void Execute(int index, TransformAccess transform)
     {
@@ -35,9 +36,15 @@ public struct SyncTransformGroupJob : IJobParallelForTransform
             }
         }
 
-        transform.localPosition = propMatrix[0];
-        var rot = propMatrix[1];
-        transform.localRotation = quaternion.EulerZXY(new float3(math.radians(rot.x), math.radians(rot.y), math.radians(rot.z)));
-        transform.localScale = propMatrix[2];      
+        if(PropCheck.x)
+            transform.localPosition = propMatrix[0];
+        if (PropCheck.y)
+        {
+            var rot = propMatrix[1];
+            transform.localRotation = quaternion.EulerZXY
+                    (new float3(math.radians(rot.x), math.radians(rot.y), math.radians(rot.z)));
+        }
+        if(PropCheck.z)
+            transform.localScale = propMatrix[2];      
     }
 }

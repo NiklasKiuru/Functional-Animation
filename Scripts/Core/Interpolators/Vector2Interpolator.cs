@@ -10,25 +10,24 @@ namespace Aikom.FunctionalAnimation
         public bool2 AxisCheck;
 
         private float2 _current;
-        bool IInterpolatorHandle<float2>.IsAlive { get; set; }
-        int IInterpolatorHandle<float2>.Id { get => InternalId; set => InternalId = value; }
+        bool IGroupProcessor.IsAlive { get; set; }
+        int IGroupProcessor.Id { get; set; }
         public ExecutionStatus Status { get; set; }
         public EventFlags PassiveFlags { get; set; }
         public EventFlags ActiveFlags { get; set; }
-        public int InternalId { get; set; }
         public float2 Current { get => _current; set => _current = value; }
         public Clock Clock { get; set; }
         public float2 From { get; set; }
         public float2 To { get; set; }
         public int AxisCount { get => 2; }
         [BurstDiscard]
-        public IInterpolatorHandle<float2> Register(FunctionContainer cont)
+        public IInterpolator<float2> ReRegister(FunctionContainer cont)
         {
             EFAnimator.RegisterTargetNonAlloc<float2, Vector2Interpolator>(ref this, cont);
             return this;
         }
         [BurstDiscard]
-        public float2 GetValue() => EFAnimator.GetValueExternal<float2, Vector2Interpolator>(this);
+        public float2 GetRealTimeValue() => EFAnimator.GetValueExternal<float2, Vector2Interpolator>(this);
         public int GetGroupId() => sizeof(float) * 2;
         public void SetValue(int index, float value) => _current[index] = value;
         public bool IsValid(int index) => AxisCheck[index];

@@ -61,6 +61,20 @@ namespace Aikom.FunctionalAnimation
         }
 
         /// <summary>
+        /// Way to register indefinete callbacks from static interface and struct calls
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="id"></param>
+        /// <param name="callback"></param>
+        /// <param name="flags"></param>
+        public static void RegisterCallback<T>(int id, Action<T> callback, EventFlags flags)
+            where T : struct
+        {   
+            // Pins the lifetime to this object
+            RegisterCallback(id, callback, _stack, flags);
+        }
+
+        /// <summary>
         /// Calls all valid flagged callbacks if there are active recievers
         /// </summary>
         /// <typeparam name="T"></typeparam>

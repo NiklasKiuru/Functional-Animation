@@ -1,6 +1,10 @@
 
 namespace Aikom.FunctionalAnimation
-{
+{   
+    /// <summary>
+    /// Referrable object for handles
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
     public class HandleTracker<T> : IInterpolatorHandle<T> 
         where T : unmanaged
     {
@@ -8,15 +12,8 @@ namespace Aikom.FunctionalAnimation
         private FunctionContainer _container;
 
         private IInterpolator<T> _processor;
-        bool IInterpolatorHandle<T>.IsAlive { get => _isAlive; set => _isAlive = value; }
-        int IInterpolatorHandle<T>.Id { get => _processor.InternalId; set => _processor.InternalId = value; }
-        public IInterpolator<T> Processor
-        {
-            get
-            {
-                return _processor;
-            }
-        }
+        bool IGroupProcessor.IsAlive { get => _isAlive; set => _isAlive = value; }
+        int IGroupProcessor.Id { get => _processor.Id; set => _processor.Id = value; }
 
         internal HandleTracker(IInterpolator<T> proc, FunctionContainer cont)
         {
@@ -25,12 +22,22 @@ namespace Aikom.FunctionalAnimation
             _container = cont;
         }
 
+        /// <summary>
+        /// IGroupProcessor group id implimentation
+        /// </summary>
+        /// <returns></returns>
         public int GetGroupId() => _processor.GetGroupId();
-        public FunctionContainer GetCachedContainer() => _container;
+
+        /// <summary>
+        /// Gets a realtime value of the interpolator
+        /// </summary>
+        /// <returns></returns>
         public T GetValue()
         {   
+            // Since this is a reference type _isAlive is always up to date
+            // where as _processor has no real alive state
             if(_isAlive) 
-                return _processor.GetValue();
+                return _processor.GetRealTimeValue();
             return 
                 default;
         }
@@ -40,7 +47,7 @@ namespace Aikom.FunctionalAnimation
         /// </summary>
         public void Restart()
         {
-            _processor.Register(_container);
+            _processor = _processor.ReRegister(_container);
             _isAlive = true;
         }
         

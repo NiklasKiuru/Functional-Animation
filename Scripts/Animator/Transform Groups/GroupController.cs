@@ -7,18 +7,11 @@ using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Jobs;
 
-public class GroupController : IDisposable
+public class GroupController : IDisposable, IAnimator
 {
-    private Interpolator<Vector3>[] _vectorInterpolators = new Interpolator<Vector3>[3]
-    {
-            new Interpolator<Vector3>(null, null, 0, Vector3.zero, Vector3.zero),
-            new Interpolator<Vector3>(null, null, 0, Vector3.zero, Vector3.zero),
-            new Interpolator<Vector3>(null, null, 0, Vector3.zero, Vector3.zero)
-    };
     private MatrixRxC<bool> _animationChecks;
     private bool3x4 _jobAxisChecks;
     private Transform _target;
-    private bool _isActive;
     private bool _hasInactiveGroupChildren;
     private TransformAnimation _data;
     private TransformGroup _addGroup;
@@ -31,9 +24,21 @@ public class GroupController : IDisposable
     private TransformAccessArray _transformAccessArray;
     private JobHandle _jobHandle;
     private int _threadCount;
+    private TransformHandle _handle;
+    private bool3 _propChecks;
 
-    internal Interpolator<Vector3>[] VectorInterpolators { get => _vectorInterpolators; }
-    public bool IsActive { get => _isActive; }
+    public bool IsActive 
+    { 
+        get 
+        { 
+            if (_handle == null)
+                return false;
+            else
+                return _handle.IsActive;    
+        } 
+    }
+
+    TransformHandle IAnimator.Handle => _handle;
 
     public GroupController(int threadCount)
     {
@@ -47,7 +52,7 @@ public class GroupController : IDisposable
     /// </summary>
     /// <param name="anim"></param>
     /// <param name="target"></param>
-    internal void SetAnimation(TransformAnimation anim, Transform target, List<Transform> group)
+    internal void Start(TransformAnimation anim, Transform target, List<Transform> group)
     {   
         TransformAccessArray.Allocate(group.Count, _threadCount, out _transformAccessArray);
         for(int i = 0; i < group.Count; i++)
@@ -57,6 +62,9 @@ public class GroupController : IDisposable
         _offsets = new NativeList<float3x3>(group.Count, Allocator.Persistent);
         _currentValues = new float3x3();
         _originValues = new float3x3();
+        _originValues.c0 = new float3(target.position.x, target.localEulerAngles.x, target.localScale.x);
+        _originValues.c1 = new float3(target.position.y, target.localEulerAngles.y, target.localScale.y);
+        _originValues.c2 = new float3(target.position.z, target.localEulerAngles.z, target.localScale.z);
         _updateGroup = new TransformGroup(target, group);
 
         for(int i = 0; i < group.Count; i++)
@@ -78,61 +86,16 @@ public class GroupController : IDisposable
         var w = _animationChecks.GetColumn(3);
         var boolw = new bool3(w[0], w[1], w[2]);
         _jobAxisChecks = new bool3x4(boolx, booly, boolz, boolw);
-        _job = new SyncTransformGroupJob()
-        {
-            Offsets = _offsets,
-            CurrentValues = _currentValues,
-            OriginValues = _originValues,
-            AxisCheck = _jobAxisChecks,
-        };
-
-        _isActive = true;
         _data = anim;
         _target = target;
-        _vectorInterpolators = new Interpolator<Vector3>[3];
-        var properties = (TransformProperty[])Enum.GetValues(typeof(TransformProperty));
-        for (int i = 0; i < properties.Length; i++)
+
+        _handle = new TransformHandle();
+        _propChecks = new bool3(anim[0].Animate, anim[1].Animate, anim[2].Animate);
+        this.SetAnimation(anim, target, SetVal);
+        void SetVal(float3 val, TransformProperty prop)
         {
-            var prop = properties[i];
-            var data = anim[prop];
-
-            // Do not animate this property
-            if (!data.Animate)
-            {
-                _vectorInterpolators[i] = null;
-                continue;
-            }
-
-            Action<Vector3> setValFunc;
-            Func<float, Vector3, Vector3, Vector3> incrimentFunc;
-
-            // Animate all axis
-            if (_animationChecks[i, 3])
-            {
-                var func = anim[prop].GenerateFunction(Axis.W);
-                incrimentFunc = IncrimentAll(func);
-                setValFunc = DefineSetValueFunctionAll(prop);
-            }
-            else
-            {
-                setValFunc = DefineSetValueFunctionSeparate(prop, data.AnimateableAxis);
-                var funcs = new Func<float, float>[3];
-                for (int j = 0; j < data.Length - 1; j++)
-                {
-                    if (!_animationChecks[i, j])
-                        continue;
-                    funcs[j] = anim[prop].GenerateFunction((Axis)j);
-                }
-                incrimentFunc = IncrimentSelected(funcs, prop);
-
-            }
-
-            var start = data.Mode == AnimationMode.Relative ? GetPropValue(prop) : data.Start;
-            var end = data.Mode == AnimationMode.Relative ? GetPropValue(prop) + data.Offset : data.Target;
-
-            var duration = data.Sync ? anim.Duration : data.Duration;
-            _vectorInterpolators[i] = new Interpolator<Vector3>(incrimentFunc, setValFunc,
-                1 / duration, start, end, data.TimeControl);
+            prop.SetValue(target, val);
+            _currentValues[(int)prop] = val;
         }
     }
 
@@ -141,7 +104,6 @@ public class GroupController : IDisposable
     /// </summary>
     public void Disable()
     {
-        _isActive = false;
         if(!_jobHandle.IsCompleted)
             _jobHandle.Complete();
         Dispose();
@@ -151,7 +113,7 @@ public class GroupController : IDisposable
     /// Adds a new child to the current group
     /// </summary>
     /// <param name="target"></param>
-    internal void AddGroupChild(Transform target)
+    public void AddGroupChild(Transform target)
     {
         _addGroup.Children.Add(new TransformGroup.TransformChild()
         {
@@ -206,37 +168,26 @@ public class GroupController : IDisposable
     /// <summary>
     /// Updates the current animation
     /// </summary>
-    internal void Update()
+    public void Update()
     {
-        if (!_isActive)
+        if (!IsActive)
             return;
-        int activeCount = 0;
-        for (int i = 0; i < _vectorInterpolators.Length; i++)
-        {
-            var interpolator = _vectorInterpolators[i];
-            if (interpolator == null || interpolator.InternalState == Interpolator<Vector3>.Status.Stopped)
-                continue;
-
-            interpolator.Run();
-            _currentValues[i] = interpolator.CurrentValue;
-            activeCount++;
-        }
         _job = new SyncTransformGroupJob()
         {
             Offsets = _offsets,
             CurrentValues = _currentValues,
             OriginValues = _originValues,
             AxisCheck = _jobAxisChecks,
+            PropCheck = _propChecks,
         };
 
         _jobHandle = _job.Schedule(_transformAccessArray);
-        _isActive = activeCount > 0;
     }
 
     /// <summary>
     /// Completes the current jobhandle. Must be called in late update
     /// </summary>
-    internal void ApplyTransformations()
+    public void CompleteJobs()
     {
         _jobHandle.Complete();
         CheckInactiveGroupChildren();
@@ -247,132 +198,12 @@ public class GroupController : IDisposable
     /// </summary>
     public void Dispose()
     {
-        if(_offsets.IsCreated) _offsets.Dispose();
+        _handle.KillAll();
+        _handle = null;
+        if (_offsets.IsCreated) _offsets.Dispose();
         if(_transformAccessArray.isCreated) _transformAccessArray.Dispose();
         if(_target != null)
             UnityEngine.Object.Destroy(_target.gameObject);
-    }
-
-
-
-
-
-
-    private Func<float, Vector3, Vector3, Vector3> IncrimentAll(Func<float, float> ease)
-    {
-        return (t, start, end) => EF.Interpolate(ease, start, end, t);
-    }
-
-    private Func<float, Vector3, Vector3, Vector3> IncrimentSelected(Func<float, float>[] easingFuncs, TransformProperty prop)
-    {
-        var row = _animationChecks.GetRow((int)prop);
-        return (t, start, end) =>
-        {
-            var vector = new Vector3();
-            for (int i = 0; i < easingFuncs.Length; i++)
-            {
-                if (!row[i])
-                    continue;
-                vector[i] = EF.Interpolate(easingFuncs[i], start[i], end[i], t);
-            }
-            return vector;
-        };
-    }
-
-    private Vector3 GetPropValue(TransformProperty prop)
-    {
-        return prop switch
-        {
-            TransformProperty.Position => _target.localPosition,
-            TransformProperty.Rotation => _target.localRotation.eulerAngles,
-            TransformProperty.Scale => _target.localScale,
-            _ => throw new System.NotImplementedException(),
-        };
-    }
-
-    private Action<Vector3> DefineSetValueFunctionSeparate(TransformProperty prop, bool3 animateableAxis)
-    {
-        switch (prop)
-        {
-            case TransformProperty.Position:
-                return (v) =>
-                {
-                    var vector = new Vector3(animateableAxis.x ? v.x : _target.localPosition.x,
-                        animateableAxis.y ? v.y : _target.localPosition.y,
-                        animateableAxis.z ? v.z : _target.localPosition.z);
-                    _target.localPosition = vector;
-                    //for(int i = 0; i < _transformGroup.Children.Count; i++)
-                    //{
-                    //    var child = _transformGroup.Children[i];
-                    //    child.Target.localPosition = child.PositionOffset + vector;
-                    //}
-                };
-            case TransformProperty.Rotation:
-                return (v) =>
-                {
-                    var vector = new Vector3(animateableAxis.x ? v.x : _target.localRotation.eulerAngles.x,
-                        animateableAxis.y ? v.y : _target.localRotation.eulerAngles.y,
-                        animateableAxis.z ? v.z : _target.localRotation.eulerAngles.z);
-                    _target.localRotation = Quaternion.Euler(vector);
-                    //for (int i = 0; i < _transformGroup.Children.Count; i++)
-                    //{
-                    //    var child = _transformGroup.Children[i];
-                    //    child.Target.localRotation = Quaternion.Euler(child.RotationOffset + vector);
-                    //}
-                };
-            case TransformProperty.Scale:
-                return (v) =>
-                {
-                    var vector = new Vector3(animateableAxis.x ? v.x : _target.localScale.x,
-                        animateableAxis.y ? v.y : _target.localScale.y,
-                        animateableAxis.z ? v.z : _target.localScale.z);
-                    _target.localScale = vector;
-                    //for (int i = 0; i < _transformGroup.Children.Count; i++)
-                    //{
-                    //    var child = _transformGroup.Children[i];
-                    //    child.Target.localScale = child.ScaleOffset + vector;
-                    //}
-                };
-        }
-        throw new System.NotImplementedException();
-    }
-
-    private Action<Vector3> DefineSetValueFunctionAll(TransformProperty prop)
-    {
-        switch (prop)
-        {
-            case TransformProperty.Position:
-                return (v) => 
-                { 
-                    _target.localPosition = v;
-                    //for (int i = 0; i < _transformGroup.Children.Count; i++)
-                    //{
-                    //    var child = _transformGroup.Children[i];
-                    //    child.Target.localPosition = child.PositionOffset + v;
-                    //}
-                };
-            case TransformProperty.Rotation:
-                return  (v) =>
-                { 
-                    _target.localRotation = Quaternion.Euler(v);
-                    //for (int i = 0; i < _transformGroup.Children.Count; i++)
-                    //{
-                    //    var child = _transformGroup.Children[i];
-                    //    child.Target.localRotation = Quaternion.Euler(child.RotationOffset + v);
-                    //}
-                };
-            case TransformProperty.Scale:
-                return (v) => 
-                { 
-                    _target.localScale = v;
-                    //for (int i = 0; i < _transformGroup.Children.Count; i++)
-                    //{
-                    //    var child = _transformGroup.Children[i];
-                    //    child.Target.localScale = child.ScaleOffset + v;
-                    //}
-                };
-        };
-        throw new System.NotImplementedException();
     }
 }
 
