@@ -10,6 +10,8 @@ namespace Aikom.FunctionalAnimation
         private float _speed;
         private int _direction;
         private TimeControl _timeControl;
+        private int _currentLoop;
+        private int _maxLoopCount;
 
         /// <summary>
         /// Current linear time [0, 1]
@@ -41,6 +43,16 @@ namespace Aikom.FunctionalAnimation
         /// </summary>
         public int Direction { get => _direction; }
 
+        /// <summary>
+        /// Max number of loops allowed for this clock
+        /// </summary>
+        public int MaxLoops { get => _maxLoopCount; set => _maxLoopCount = value; }
+
+        /// <summary>
+        /// Current loop of the clock
+        /// </summary>
+        public int CurrentLoop { get => _currentLoop; }
+
         public Clock(float speed, TimeControl ctrl = TimeControl.PlayOnce)
         {
             if (speed == float.PositiveInfinity)
@@ -49,6 +61,8 @@ namespace Aikom.FunctionalAnimation
             _direction = 1;
             _time = 0;
             _timeControl = ctrl;
+            _currentLoop = 0;
+            _maxLoopCount = -1;
         }
 
         /// <summary>
@@ -69,9 +83,14 @@ namespace Aikom.FunctionalAnimation
         }
 
         /// <summary>
-        /// Resets the time to 0
+        /// Resets the clock
         /// </summary>
-        public void Reset() => _time = 0;
+        public void Reset()
+        {
+            _time = 0;
+            _direction = 1;
+            _currentLoop = 0;
+        }
 
         private float Forward()
         {   
@@ -85,12 +104,14 @@ namespace Aikom.FunctionalAnimation
             {
                 _direction = -1;
                 _time = 1 - (1 - _time);
+                _currentLoop++;
             }
                 
             else if (_time <= 0)
             {
                 _direction = 1;
                 _time = Mathf.Abs(_time);
+                _currentLoop++;
             }
                 
             return _time;
@@ -99,10 +120,19 @@ namespace Aikom.FunctionalAnimation
         private float Loop()
         {
             if (_time >= 1)
+            {
                 _time = 1 - _time;
+                _currentLoop++;
+            }
+               
             return _time;
         }
 
+
+        public bool CheckCompletion()
+        {
+            return (_timeControl == TimeControl.PlayOnce && _time >= 1) || _maxLoopCount - _currentLoop == 0;
+        }
     }
 }
 

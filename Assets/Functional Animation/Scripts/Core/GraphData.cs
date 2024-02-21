@@ -85,7 +85,7 @@ namespace Aikom.FunctionalAnimation
         /// <param name="arr"></param>
         public void GetRangedFunctionsNonAlloc(ref RangedFunction[] arr, int startingIndex = 0)
         {
-            int max = Mathf.Max(arr.Length, _functions.Length);
+            int max = Mathf.Min(arr.Length, _functions.Length);
             for(int i = 0; i < max; ++i)
             {
                 arr[i + startingIndex] = new RangedFunction 

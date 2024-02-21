@@ -11,6 +11,12 @@
 * Extensions for MonoBehaviours
 * High performance with C# jobs and Burst
 
+## Dependencies
+* Burst 1.6.6 or higher
+* Unity Collections 1.2.4 or higher
+* Unity Mathematics 1.2.4 or higher
+* Core RP Library 12.1.11 or higher
+
 ## Graph UI
 Manipulate graph data visually in the editor
 
@@ -168,7 +174,6 @@ EF.Create(from, to, duration, _customGraph);
 ```
 
 Most vector type interpolators support axis selection methods where each axis can be interpolated with their own separate functions without declaring a new tween for each axis separately.
-Note that some of these methods can create some data for garbage collector but only on initialization.
 
 ```cs
 bool3 _mySelectedAxis;
@@ -197,7 +202,7 @@ The last example for avoiding locking the axis value is fine in most cases but t
 that handles transforms directly via Unitys `TransformAccesArray`.
 
 ### Controlling tweens
-Once the `EF.Create()` has been called it returns a process handle which is recommended to cache locally for possible future use.
+Once the `EF.Create()` has been called it returns a process handle which is recommended to cache locally for possible future use and to avoid creating garbage.
 With this handle you can access some process data, set event callbacks or control the process itself. The following example creates a process with a looping linear interpolation
 that sets the current position of the object between its current position and `_myVec`. If the process pauses it checks if the current X coordinate is not 0 and disables the gameObject.
 Finally everytime the process is resumed the object is enabled and the process is set to start from Pause state.
@@ -223,19 +228,23 @@ Available `IInterpolatorHandle<T>` extensions and properties:
 	All call targets for OnComplete will be fired and the process will end with its current value. Depending on execution order the actual removal process
 	might happen next frame instead of right this frame.
 	- `Kill()`: Kills the process immediately and does not fire OnComplete.
+	- `Restart()`: Restarts the process. It does not matter if the process is either dead or alive.
+	- `Hibernate()`: Inactivates the process for a set period of time. Can be used to add delay to the initial start or just to set the process on hold.
+	Does not fire `OnPause()` or `OnResume()` callbacks. The only way to continue execution is to wait for the delay. (Currently minor bug with Resume).
+	- `SetLoopLimit()`: Set max loop count to terminate process after.
 
 * Set callbacks
-	- `OnStart()`: Fires when the process initially starts. (Currently after the first execution cycle. Might change this in the future)
-	- `OnPause()`: Fires every time the process is paused
+	- `OnStart()`: Fires when the process initially starts. (Currently after the first execution cycle. Might change this in the future).
+	- `OnPause()`: Fires every time the process is paused.
+	- `OnResume()`: Fired when the process resumes from paused state.
 	- `OnComplete()`: Fired when the process has completed.
 	- `OnUpdate()`: Fired every time the value is recalculated (once per frame).
+	- `OnKill()`: Fired once on either forced or natural termination.
 
 * Get data
 	- `GetValue()`: Gets the current calculation value. It is recommended not to use this method frequently and to use `OnUpdate()` callback in frequent queries.
-	- `IsAlive`: States whether the process is still alive. (There is currently a bug with this where the state does not update properly)
+	- `IsAlive`: States whether the process is still alive. Non alive processes do not maintain any previously assigned callbacks.
 	- `Id`: Used process Id
-
-> Note: While debugging the "Current" value in the handle shown in the debugger will always show a default value
 
 ### Lifetime
 Interpolators can be created with three different time controls:
@@ -247,5 +256,39 @@ Interpolators can be created with three different time controls:
 | PingPong | Reverses the loop at each end point |
 
 If a process is meant to play only once the process group will automatically discard it once it completes.
-Currently the only way to guarantee the ending of a looping processes is to kill them manually with either `Kill()` or `Complete()` commands.
+Currently the only way to guarantee the ending of a looping processes is to kill them manually with either `Kill()` or `Complete()` commands or by setting a max loop counter.
 In the future all Unity objects should automatically kill processes started from the object.
+
+### Avoiding allocations
+In general interpolation processes avoid any unnecessary memory allocations and no allocations are made durning processing. However in order to track the entegrity of a newly created process handle and avoid possible Id mixups
+each controllable handle has to be allocated on creation. The following examples avoid these situations:
+```cs
+// Cached private member variable
+IInterpolatorHandle<float> _processHandle;
+
+// Controllable handle. No allocations
+_processHandle = EF.Create(from, to, duration, Function.EaseInExp);
+
+// Limited control handle that terminates after 2 loops. The proc id struct is so small it won't get heap allocated
+EF.CreateNonAlloc(from, to, duration, Function.EaseInExp, TimeControl.Loop, 2);
+
+```
+
+Obviously anonymous methods do create GC allocations which eventually will be unpinned once the process dies, but this can be avoided by simply declaring and using instance methods instead.
+`EF.CreateNonAlloc()` returns a struct that contains the used process id and the group id but it has some limitations. The major limitation is that it does not allow direct `Restart()` calls.
+Some examples how to use non alloc processes:
+
+```cs
+// Non alloc handles allow infinite loops by setting the loop count to -1
+EF.CreateNonAlloc(from, to , duration Function.Linear, TimeControl.Loop, -1);
+
+// You can still use some simple callbacks
+var id = EF.CreateNonAlloc(from, to, duration, Function.Linear, TimeControl.PlayOnce, 1, (v) => myval = v);
+
+// You can ask from the animator if the process exists and retrieve the actual processor
+EFAnimator.TryGetProcessor<float, FloatInterpolator>(id, out processor);
+```
+
+
+
+## Graph and function system

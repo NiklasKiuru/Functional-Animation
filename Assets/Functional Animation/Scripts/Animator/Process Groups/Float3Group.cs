@@ -12,13 +12,5 @@ namespace Aikom.FunctionalAnimation
 
         public override int GroupId => sizeof(float) * 3;
         protected override int Dimension => 3;
-
-        protected unsafe override bool ProcessInternal()
-        {
-            UnsafeExecutionUtility.Interpolate3Floats((RangedFunction*)_functions.GetUnsafeReadOnlyPtr(),
-                    (Vector3Interpolator*)_processors.GetUnsafePtr(), Time.deltaTime,
-                    out var hasEvents, (EventData<float3>*)_events.GetUnsafePtr(), _processors.Length);
-            return hasEvents;
-        }
     }
 }

@@ -9,16 +9,6 @@ namespace Aikom.FunctionalAnimation
     public interface IInterpolatorHandle<T> : IGroupProcessor where T : unmanaged
     {
         /// <summary>
-        /// Process id of this handle
-        /// </summary>
-        public int Id { get; internal set; }
-
-        /// <summary>
-        /// Alive status of the process
-        /// </summary>
-        public bool IsAlive { get; internal set; }
-
-        /// <summary>
         /// Gets the current interpolation value of this handle process
         /// </summary>
         /// <remarks>It is not recommended to use this option frequently. 
@@ -52,9 +42,34 @@ namespace Aikom.FunctionalAnimation
         /// <typeparam name="T"></typeparam>
         /// <param name="handle"></param>
         /// <returns></returns>
-        public static IInterpolatorHandle<T> Restart<T>(this IInterpolatorHandle<T> handle) where T : unmanaged
+        public static IInterpolatorHandle<T> Restart<T>(this IInterpolatorHandle<T> handle) 
+            where T : unmanaged
         {   
             EFAnimator.RestartProcess(handle);
+            return handle;
+        }
+
+        /// <summary>
+        /// Sets the current process as inactive for the given delay and continues after the delay has passed.
+        /// Does not call OnPause or OnResume
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="handle"></param>
+        /// <param name="delay"></param>
+        /// <returns></returns>
+        public static IInterpolatorHandle<T> Hibernate<T>(this IInterpolatorHandle<T> handle, float delay)
+            where T : unmanaged
+        {   
+            // This is guaranteed to die once delay has been reached
+            var procId = EF.CreateNonAlloc(0, 1, delay, Function.Linear, TimeControl.PlayOnce, 1);
+            EFAnimator.SetPassiveFlagsInternal(procId, EventFlags.OnKill);
+
+            // Disable this handle internally temporarily
+            EFAnimator.ForceExecutionStatusExternal(ref handle, ExecutionStatus.Inactive);
+
+            // Sets a callback to set the status of this handle back to running state once the earlier process dies
+            CallbackRegistry.RegisterCallback<T>(procId.Id, (v) => 
+                EFAnimator.ForceExecutionStatusExternal(ref handle, ExecutionStatus.Running), EventFlags.OnKill);
             return handle;
         }
 
@@ -192,6 +207,20 @@ namespace Aikom.FunctionalAnimation
         public static IInterpolatorHandle<T> Kill<T>(this IInterpolatorHandle<T> handle) where T : unmanaged
         {
             EFAnimator.KillTargetExternal(ref handle);
+            return handle;
+        }
+
+        /// <summary>
+        /// Sets max loop count for the process
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="handle"></param>
+        /// <param name="count"></param>
+        /// <returns></returns>
+        public static IInterpolatorHandle<T> SetLoopLimit<T>(this IInterpolatorHandle<T> handle, int count)
+            where T : unmanaged
+        {
+            EFAnimator.SetMaxLoopCountExternal(ref handle, count);
             return handle;
         }
     }
