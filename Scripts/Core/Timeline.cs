@@ -91,7 +91,7 @@ namespace Aikom.FunctionalAnimation
         /// <returns></returns>
         public Vector2 MoveNode(Vector2 pos, int index)
         {
-            pos = new Vector2(Mathf.Clamp01(pos.x), Mathf.Clamp01(pos.y));
+            pos = new Vector2(Mathf.Clamp01(pos.x), Mathf.Clamp(pos.y, -1, 1));
             if (index == 0)
                 pos.x = 0;
             else if (index == _nodes.Length - 1)

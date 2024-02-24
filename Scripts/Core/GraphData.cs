@@ -107,7 +107,7 @@ namespace Aikom.FunctionalAnimation
             var newArray = new Function[_functions.Length + 1];
             var timeline = _timeline;
 
-            pos = new Vector2(Mathf.Clamp01(pos.x), Mathf.Clamp01(pos.y));
+            pos = new Vector2(Mathf.Clamp01(pos.x), Mathf.Clamp(pos.y, -1, 1));
             var index = 0;
             for (int i = 0; i < _functions.Length; i++)
             {

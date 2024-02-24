@@ -21,6 +21,9 @@ namespace Aikom.FunctionalAnimation
         private static IndexPool _indexer;
         private static Dictionary<int, IProcessGroupHandle<IGroupProcessor>> _processGroups;
 
+        [SerializeField] private int _activeProcessCount = 0;
+        [SerializeField] private int _activeNonAllocCount = 0;
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void CreateInstance()
         {
@@ -52,9 +55,11 @@ namespace Aikom.FunctionalAnimation
             if (TryGetExplicitGroup<T, D>(groupId, out var group))
             {
                 group.Add(processor, cont);
+                _instance._activeProcessCount++;
                 wrapper.OnKill(_instance, (v) =>
                 {
                     wrapper.IsAlive = false;
+                    _instance._activeProcessCount--;
 #if USE_INDEX_SAFEGUARDS
                     _indexer.Return(processor.InternalId);
 #endif
@@ -108,12 +113,15 @@ namespace Aikom.FunctionalAnimation
                 processor.Status = ExecutionStatus.Running;
                 processor.IsAlive = true;
                 group.Add(processor, cont);
+                _instance._activeNonAllocCount++;
+                CallbackRegistry.RegisterCallback<T>(processor.Id, (v) =>
+                {   
+                    _instance._activeNonAllocCount--;
 #if USE_INDEX_SAFEGUARDS
-                processor.OnKill(_instance, (v) =>
-                {
                     _indexer.Return(processor.InternalId);
-                });
 #endif
+                }, EventFlags.OnKill);
+
                 return processor.GetIdentifier();
             }
             return new ProcessId(-1, -1);
@@ -204,16 +212,16 @@ namespace Aikom.FunctionalAnimation
         /// <typeparam name="D"></typeparam>
         /// <param name="groupId"></param>
         /// <param name="processId"></param>
-        internal static void KillTargetInternal<T, D>(int groupId, int processId)
+        public static void KillTargetInternal<T, D>(ProcessId processId)
             where T : unmanaged
             where D : IInterpolator<T>
         {
-            if(TryGetExplicitGroup<T, D>(groupId, out var group))
+            if(TryGetExplicitGroup<T, D>(processId.GroupId, out var group))
             {
-                var val = group.GetValue(processId).Current;
-                CallbackRegistry.TryCall(new EventData<T>() { Id = processId, Flags = EventFlags.OnKill, Value = val });
-                CallbackRegistry.UnregisterCallbacks(processId);
-                group.ForceRemove(processId);
+                var val = group.GetValue(processId.Id).Current;
+                CallbackRegistry.TryCall(new EventData<T>() { Id = processId.Id, Flags = EventFlags.OnKill, Value = val });
+                CallbackRegistry.UnregisterCallbacks(processId.Id);
+                group.ForceRemove(processId.Id);
             }
         }
 
