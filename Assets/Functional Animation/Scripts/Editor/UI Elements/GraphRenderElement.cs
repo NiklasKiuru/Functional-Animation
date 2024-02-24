@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Unity.Mathematics;
 using UnityEditor;
 using UnityEngine;
@@ -18,10 +19,11 @@ namespace Aikom.FunctionalAnimation.Editor
         private const float c_width = 0.73f;
         private const float c_height = 0.8f;
 
+
         private Material _graphMaterial;
         private int _sampleAmount = 1000;
         private int _gridLines = 10;
-        private Label[] _gridMarkers = new Label[c_maxGridLines + 1];
+        private Label[] _gridMarkers = new Label[2 * c_maxGridLines + 1];
         private Label[] _gridTimeMarkers = new Label[c_maxGridLines + 1];
         private int _currentMarkers = 0;
         private float _measurementInterval;
@@ -32,6 +34,13 @@ namespace Aikom.FunctionalAnimation.Editor
         private bool _isDragging = false;
         private float _xMult = 1;
         private float _yMult = 1;
+        [SerializeField] private Color[] _legendColors = new Color[4] 
+        { 
+            Color.red,
+            Color.green, 
+            Color.blue,
+            Color.white,
+        };
 
         public float YAxisMultiplier { get => _yMult; set => _yMult = Mathf.Max(value, 1); }
         public float XAxisMultiplier { get => _xMult; set => _xMult = Mathf.Max(value, 1); }
@@ -39,11 +48,6 @@ namespace Aikom.FunctionalAnimation.Editor
         /// Maximum allowed grid lines
         /// </summary>
         public static int MaxGridLines { get => c_maxGridLines; }
-
-        /// <summary>
-        /// Target animation this element draws the graph from
-        /// </summary>
-        public TransformAnimation Animation { get; set; }
 
         /// <summary>
         /// Amount of times each graph function is sampled
@@ -60,11 +64,6 @@ namespace Aikom.FunctionalAnimation.Editor
         /// </summary>
         public float MeasurementInterval { get => _measurementInterval; }
 
-        /// <summary>
-        /// Currently drawn property
-        /// </summary>
-        public TransformProperty DrawProperty { get; set; }
-
         public GraphData[] GraphData { get; private set; }
         public int DefaultModificationTarget { get; private set; }
         private float DockAreaHeight { get => _root.parent.layout.height - _root.layout.height; }
@@ -73,7 +72,7 @@ namespace Aikom.FunctionalAnimation.Editor
         /// Base constructor
         /// </summary>
         /// <param name="root"></param>
-        public GraphRenderElement(VisualElement root)
+        public GraphRenderElement(VisualElement root, string legendHeader, string[] legendElements)
         {
             _graphMaterial = AssetDatabase.LoadAssetAtPath<Material>("Assets/Functional Animation/UI/GraphMaterial.mat");
             _root = root;
@@ -82,11 +81,13 @@ namespace Aikom.FunctionalAnimation.Editor
             style.backgroundColor = new StyleColor(new Color(0.2f, 0.2f, 0.2f));
             style.borderLeftWidth = new StyleFloat(2);
             style.borderLeftColor = new StyleColor(new Color(0.8f, 0.8f, 0.8f));
+
+            // X-axis
             for (int i = 0; i <= c_maxGridLines; i++)
-            {
-                Add(_gridMarkers[i] = CreateLabel());
                 Add(_gridTimeMarkers[i] = CreateLabel());
-            }
+            // Y-Axis
+            for(int i = 0; i <= 2 * c_maxGridLines; i++)
+                Add(_gridMarkers[i] = CreateLabel());
 
             static Label CreateLabel()
             {
@@ -103,16 +104,16 @@ namespace Aikom.FunctionalAnimation.Editor
             var mainContainer = new VisualElement();
             mainContainer.style.marginTop = new StyleLength(new Length(30f, LengthUnit.Pixel));
             mainContainer.style.marginLeft = new StyleLength(new Length(5f, LengthUnit.Pixel));
-            mainContainer.style.maxWidth = new StyleLength(new Length(40f, LengthUnit.Pixel));
+            mainContainer.style.maxWidth = new StyleLength(new Length(140f, LengthUnit.Pixel));
 
-            _propertyName = new Label(DrawProperty.ToString());
+            _propertyName = new Label(legendHeader);
             mainContainer.Add(_propertyName);
             Add(mainContainer);
 
-            CreateLegend("X", Color.red);
-            CreateLegend("Y", Color.green);
-            CreateLegend("Z", Color.blue);
-            CreateLegend("All", Color.white);
+            for(int i = 0; i < legendElements.Length; i++)
+            {
+                CreateLegend(legendElements[i], GetGraphColor(i));
+            }
             CreateNodeMarkers();
             RegisterCallback<MouseMoveEvent>(OnMarkerElementPositionChanged);
             RegisterCallback<MouseUpEvent>(OnDragEnd);
@@ -124,6 +125,7 @@ namespace Aikom.FunctionalAnimation.Editor
                 legContainer.style.marginBottom = new StyleLength(new Length(2f, LengthUnit.Pixel));
                 legContainer.style.marginTop = new StyleLength(new Length(2f, LengthUnit.Pixel));
                 legContainer.style.alignItems = Align.Center;
+                legContainer.style.width = new StyleLength(new Length(100, LengthUnit.Percent));
 
                 var colorContainer = new VisualElement();
                 colorContainer.style.backgroundColor = new StyleColor(legendColor);
@@ -166,10 +168,16 @@ namespace Aikom.FunctionalAnimation.Editor
             DrawGraph();
         }
 
-        public void SetDrawProperty(TransformProperty property)
+        public void DisableDrawTarget(int index)
         {
-            DrawProperty = property;
-            DrawGraph();
+            SetDrawTarget(index, null);
+        }
+
+        public void SetDrawTarget(int index, GraphData data)
+        {
+            if (index < 0 || index >= GraphData.Length)
+                return;
+            GraphData[index] = data;
         }
 
         public void SetModificationTarget(int target)
@@ -177,6 +185,8 @@ namespace Aikom.FunctionalAnimation.Editor
             DefaultModificationTarget = target;
             DrawGraph();
         }
+
+        public void SetLegendHeader(string header) => _propertyName.text = header;
 
         /// <summary>
         /// Sets and activates the node markers for the given axis
@@ -186,22 +196,15 @@ namespace Aikom.FunctionalAnimation.Editor
         {
             for (int i = 0; i < _positionMarkers.Length; i++)
                 _positionMarkers[i].style.visibility = Visibility.Hidden;
-            if (Animation == null)
-                return;
-            var container = Animation[DrawProperty];
-            if(!container.Animate)
+            if (GraphData == null || GraphData.Length == 0)
                 return;
 
-            var axis = (Axis[])Enum.GetValues(typeof(Axis));
             var activeMarkers = 0;
-            var draw = new bool4(container.AnimateableAxis, !container.SeparateAxis);
-            foreach (var ax in axis)
+            for (int i = 0; i < GraphData.Length; i++)
             {
-                if (!draw[(int)ax])
-                    continue;
-                var axisColor = GetAxisColor(ax);
+                var axisColor = GetGraphColor(i);
                 var index = 0;
-                var nodes = container[ax].Nodes;
+                var nodes = GraphData[i].Nodes;
                 foreach (var node in nodes)
                 {
                     var pos = GetAbsolutePos(node.x, node.y);
@@ -211,7 +214,7 @@ namespace Aikom.FunctionalAnimation.Editor
                     marker.style.visibility = Visibility.Visible;
                     marker.style.left = pos.x - (marker.layout.width / 2) - 2;
                     marker.style.bottom = pos.y + (marker.layout.height / 2) + 10;
-                    marker.Activate(index, axisColor, ax, node);
+                    marker.Activate(index, axisColor, i, node);
                     activeMarkers++;
                     index++;
                 }
@@ -219,17 +222,7 @@ namespace Aikom.FunctionalAnimation.Editor
             
         }
 
-        /// <summary>
-        /// Gets the position on the graph from the given panel position
-        /// </summary>
-        /// <param name="panelPositon"></param>
-        /// <returns></returns>
-        public Vector2 GetGraphPosition(Vector2 panelPositon)
-        {
-            var graphPos = new Vector2(panelPositon.x / _root.layout.width, 1 - (panelPositon.y / (_root.layout.height + DockAreaHeight)));
-            var newVec = new Vector2((graphPos.x - c_offsetX) / c_width, (graphPos.y - c_offsetY) / c_height);
-            return newVec;
-        }
+        
 
         /// <summary>
         /// Main method for drawing the graph
@@ -240,10 +233,8 @@ namespace Aikom.FunctionalAnimation.Editor
             if (!_isDragging)
                 SetNodeMarkers();
 
-            if (Animation == null)
+            if (GraphData == null || GraphData.Length == 0)
                 return;
-            //if (GraphData == null || GraphData.Length == 0)
-            //    return;
 
             // Begin draw call
             GL.PushMatrix();
@@ -256,13 +247,15 @@ namespace Aikom.FunctionalAnimation.Editor
                 // just eyeballed to get them to look right. Should still look relatively good when
                 // resizing the window
                 GL.Color(new Color(1, 1, 1, 0.2f));
+
+                // X-axis
                 var interval = 1f / _gridLines;
                 for (int j = 0; j <= _gridLines; j++)
                 {
                     float x = j * interval;
 
-                    // X-axis
-                    DrawVertex(x, 0);
+                    
+                    DrawVertex(x, -1);
                     var posX = DrawVertex(x, 1);
                     var timeMarker = _gridTimeMarkers[j];
                     timeMarker.style.visibility = Visibility.Visible;
@@ -272,18 +265,30 @@ namespace Aikom.FunctionalAnimation.Editor
                     posX = this.WorldToLocal(posX);
                     timeMarker.style.left = posX.x - (timeMarker.layout.width / 2);
                     timeMarker.style.top = timeMarker.layout.height / 2;
+                }
 
-                    // Y-axis
-                    DrawVertex(0, x);
-                    var posY = DrawVertex(1, x);
-                    var gridMarker = _gridMarkers[j];
+                // Y-axis
+                var index = 0;
+                for(int j = -_gridLines; j <= _gridLines; j++)
+                {
+                    float y = j * interval;
+
+                    if (y == 0)
+                        GL.Color(new Color(1, 1, 1, 0.6f));
+                    if (y == interval)
+                        GL.Color(new Color(1, 1, 1, 0.2f));
+
+                    DrawVertex(0, y);
+                    var posY = DrawVertex(1, y);
+                    var gridMarker = _gridMarkers[index];
                     gridMarker.style.visibility = Visibility.Visible;
-                    gridMarker.text = (x).ToString("F2");
+                    gridMarker.text = (y).ToString("F2");
 
                     posY = new Vector2(posY.x * _root.layout.width, posY.y * (_root.layout.height + DockAreaHeight));
                     posY = this.WorldToLocal(posY);
                     gridMarker.style.left = layout.width - gridMarker.layout.width * 2.5f;
                     gridMarker.style.bottom = posY.y + (gridMarker.layout.height / 2);
+                    index++;
                 }
 
                 if (_gridLines >= _currentMarkers)
@@ -291,18 +296,13 @@ namespace Aikom.FunctionalAnimation.Editor
                 else
                     DisableInactiveMarkers();
 
-                var container = Animation[DrawProperty];
-                _propertyName.text = DrawProperty.ToString();
-                var drawAxis = new bool4(container.AnimateableAxis, !container.SeparateAxis);
                 _measurementInterval = 1f / _sampleAmount;
-
-                for (int i = 0; i < 4; i++)
+                for (int i = 0; i < GraphData.Length; i++)
                 {
-                    if (!drawAxis[i])
+                    if (GraphData[i] == null)
                         continue;
-
                     SetColor(i);
-                    var func = container.GenerateFunction((Axis)i);
+                    var func = GraphData[i].GenerateFunction();
                     for (int sample = 0; sample < _sampleAmount; sample++)
                     {
                         DrawVertexSingle(sample);
@@ -328,22 +328,13 @@ namespace Aikom.FunctionalAnimation.Editor
 
         private void SetColor(int index)
         {
-            GL.Color(GetAxisColor((Axis)index));
+            GL.Color(GetGraphColor(index));
         }
 
-        private Color GetAxisColor(Axis axis)
+        private Color GetGraphColor(int axis)
         {
-            switch (axis)
-            {
-                case Axis.X:
-                    return Color.red;
-                case Axis.Y:
-                    return Color.green;
-                case Axis.Z:
-                    return Color.blue;
-                case Axis.W:
-                    return Color.white;
-            }
+            if(axis < _legendColors.Length)
+                return _legendColors[axis];
             return Color.white;
         }
 
@@ -364,17 +355,30 @@ namespace Aikom.FunctionalAnimation.Editor
             return pos;
         }
 
+        /// <summary>
+        /// Gets the position on the graph from the given panel position
+        /// </summary>
+        /// <param name="panelPositon"></param>
+        /// <returns></returns>
+        public Vector2 GetGraphPosition(Vector2 panelPositon)
+        {
+            var graphPos = new Vector2(panelPositon.x / _root.layout.width, 1 - (panelPositon.y / (_root.layout.height + DockAreaHeight)));
+            var newVec = new Vector2((graphPos.x - c_offsetX) / c_width, (((graphPos.y - c_offsetY) / c_height) * 2 ) -1);
+            return newVec;
+        }
+
         private Vector3 GetAbsolutePos(float x, float y)
         {
+            y = (y + 1) / 2;
             return new Vector3((x * c_width) + c_offsetX, (y * c_height) + c_offsetY, 0);
         }
 
         private void OnMarkerElementPositionChanged(MouseMoveEvent evt)
         {
-            if (!_isDragging || Animation == null || _activeDragElement == null)
+            if (!_isDragging || GraphData == null || _activeDragElement == null)
                 return;
             var graphPos = GetGraphPosition(evt.mousePosition);
-            var result = Animation[DrawProperty][_activeDragElement.Axis].MoveTimelineNode(_activeDragElement.Index, graphPos);
+            var result = GraphData[_activeDragElement.GraphIndex].MoveTimelineNode(_activeDragElement.Index, graphPos);
             var newGraphPos = GetAbsolutePos(result.x, result.y);
             var globalPos = new Vector2(newGraphPos.x * _root.layout.width, newGraphPos.y * (_root.layout.height + DockAreaHeight));
             globalPos = this.WorldToLocal(globalPos);

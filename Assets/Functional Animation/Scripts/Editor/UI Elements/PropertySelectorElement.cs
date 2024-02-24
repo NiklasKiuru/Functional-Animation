@@ -57,8 +57,6 @@ namespace Aikom.FunctionalAnimation.Editor
             else
                 offsetField.SetEnabled(false);
 
-
-
             _axisSelector = new AxisSelectorElement(_container[TransformProperty.Position], _axisMapping);
             _axisSelector.OverrideTargetContainer(data);
             foreach (var subElement in _axisSelector.SubSelectionElements)

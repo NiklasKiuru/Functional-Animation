@@ -57,6 +57,8 @@ namespace Aikom.FunctionalAnimation.Tests
 
             yield return new WaitForSeconds(1);
             Assert.IsTrue(handle1.IsAlive);
+            EFAnimator.TryGetProcessor<float, FloatInterpolator>(handle1.GetIdentifier(), out var process);
+            Assert.That(process.Status == ExecutionStatus.Running);
         }
 
         [UnityTest]

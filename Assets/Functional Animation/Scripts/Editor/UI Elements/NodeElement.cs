@@ -12,7 +12,7 @@ namespace Aikom.FunctionalAnimation.Editor
         private Vector2Field _dataDisplay;
 
         public int Index { get; private set; }
-        public Axis Axis { get; private set; }
+        public int GraphIndex { get; private set; }
 
         public NodeElement()
         {
@@ -64,12 +64,12 @@ namespace Aikom.FunctionalAnimation.Editor
             _dataDisplay.SetValueWithoutNotify(_cachedData);
         }
 
-        public void Activate(int index, Color color, Axis axis, Vector2 values)
+        public void Activate(int index, Color color, int graphIndex, Vector2 values)
         {
             Index = index;
             style.visibility = Visibility.Visible;
             style.backgroundColor = new StyleColor(color);
-            Axis = axis;
+            GraphIndex = graphIndex;
             _cachedData = values;
             _dataDisplay.SetValueWithoutNotify(values);
         }

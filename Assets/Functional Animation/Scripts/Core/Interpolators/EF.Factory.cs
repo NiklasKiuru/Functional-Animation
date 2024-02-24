@@ -447,7 +447,7 @@ namespace Aikom.FunctionalAnimation
         /// <param name="func"></param>
         /// <param name="onUpdate"></param>
         /// <returns></returns>
-        public static ProcessId CreateNonAlloc(float2 from, float2 to, float duration, Function func, TimeControl ctrl, int maxLoopCount, Action<float> onUpdate)
+        public static ProcessId CreateNonAlloc(float2 from, float2 to, float duration, Function func, TimeControl ctrl, int maxLoopCount, Action<float2> onUpdate)
         {
             var proc = CreateNonAlloc(from, to, duration, func, ctrl, maxLoopCount);
             EFAnimator.SetPassiveFlagsInternal(proc, EventFlags.OnUpdate);
@@ -485,7 +485,7 @@ namespace Aikom.FunctionalAnimation
         /// <param name="func"></param>
         /// <param name="onUpdate"></param>
         /// <returns></returns>
-        public static ProcessId CreateNonAlloc(float3 from, float3 to, float duration, Function func, TimeControl ctrl, int maxLoopCount, Action<float> onUpdate)
+        public static ProcessId CreateNonAlloc(float3 from, float3 to, float duration, Function func, TimeControl ctrl, int maxLoopCount, Action<float3> onUpdate)
         {
             var proc = CreateNonAlloc(from, to, duration, func, ctrl, maxLoopCount);
             EFAnimator.SetPassiveFlagsInternal(proc, EventFlags.OnUpdate);
@@ -525,7 +525,7 @@ namespace Aikom.FunctionalAnimation
         /// <param name="func"></param>
         /// <param name="onUpdate"></param>
         /// <returns></returns>
-        public static ProcessId CreateNonAlloc(float4 from, float4 to, float duration, Function func, TimeControl ctrl, int maxLoopCount, Action<float> onUpdate)
+        public static ProcessId CreateNonAlloc(float4 from, float4 to, float duration, Function func, TimeControl ctrl, int maxLoopCount, Action<float4> onUpdate)
         {
             var proc = CreateNonAlloc(from, to, duration, func, ctrl, maxLoopCount);
             EFAnimator.SetPassiveFlagsInternal(proc, EventFlags.OnUpdate);

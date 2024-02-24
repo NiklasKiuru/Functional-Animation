@@ -18,7 +18,7 @@ namespace Aikom.FunctionalAnimation.Editor
             else
                 data = property.GetValue<GraphData>();
 
-            if (data == null)
+            if (data == null || data?.Length == 0)
             {
                 data = new GraphData();
                 property.SetValue(data);
@@ -30,9 +30,9 @@ namespace Aikom.FunctionalAnimation.Editor
             if(GUI.Button(buttonRect, "Edit"))
             {
                 var window = EditorWindow.GetWindow<GraphEditorWindow>();
-                window.GraphData = data;
                 window.titleContent = new GUIContent("Graph Editor");
                 window.Show();
+                window.SetData(data, property);
             }
 
             EditorGUI.indentLevel = indent;

@@ -12,13 +12,13 @@ namespace Aikom.FunctionalAnimation.Editor
     /// The UI building here is messy at best since I did not want to spend too much time on it
     /// </summary>
     internal class TransformAnimationWindow : EditorWindow
-    {   
-        private readonly Dictionary<string, Axis> _dropDownSelectorMapping = new Dictionary<string, Axis>
+    {
+        private readonly string[] _legendMapping = new string[4]
         {
-            { "X", Axis.X },
-            { "Y", Axis.Y },
-            { "Z", Axis.Z },
-            { "All", Axis.W }
+            "X",
+            "Y",
+            "Z",
+            "All"
         };
 
         private readonly Dictionary<string, TransformProperty> _propertyMapping = new Dictionary<string, TransformProperty>
@@ -42,7 +42,6 @@ namespace Aikom.FunctionalAnimation.Editor
 
         private void CreateGUI()
         {   
-            var styleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>("Assets/UI/GraphWindowStyles.uss");
             var root = rootVisualElement;
             root.style.flexDirection = FlexDirection.Row;
 
@@ -54,8 +53,8 @@ namespace Aikom.FunctionalAnimation.Editor
             root.Add(sideBar);
 
             // Render element
-            _renderElement = new GraphRenderElement(root);
-            _renderElement.Animation = _targetAnim;
+            _renderElement = new GraphRenderElement(root, "Property", _legendMapping);
+            //_renderElement.Animation = _targetAnim;
             root.Add(_renderElement);
 
             var header = new Label("Properties");
@@ -131,7 +130,7 @@ namespace Aikom.FunctionalAnimation.Editor
             {
                 _targetAnim = e.newValue as TransformAnimation;
                 _selector.OverrideTargetContainer(_targetAnim);
-                _renderElement.Animation = _targetAnim;
+                SetDrawProperty(_selector.CurrentSelection);
             }
             void CreateNewAnimation()
             {
@@ -142,7 +141,7 @@ namespace Aikom.FunctionalAnimation.Editor
                 _targetAnim = TransformAnimation.SaveNew(path);
                 objField.value = _targetAnim;
                 _selector.OverrideTargetContainer(_targetAnim);
-                _renderElement.Animation = _targetAnim;
+                SetDrawProperty(_selector.CurrentSelection);
             }
 
             void RegisterCallbacks()
@@ -152,7 +151,7 @@ namespace Aikom.FunctionalAnimation.Editor
                 objField.RegisterValueChangedCallback(ChangeTargetAnimation);
                 createNewButton.clicked += CreateNewAnimation;
                 _renderElement.RegisterCallback<MouseUpEvent>(CreateFunctionMenu);
-                _selector.OnSelectionChanged += _renderElement.SetDrawProperty;
+                _selector.OnSelectionChanged += SetDrawProperty;
             }
 
             void UnRegisterCallbacks()
@@ -162,7 +161,20 @@ namespace Aikom.FunctionalAnimation.Editor
                 objField.UnregisterValueChangedCallback(ChangeTargetAnimation);
                 createNewButton.clicked -= CreateNewAnimation;
                 _renderElement.UnregisterCallback<MouseUpEvent>(CreateFunctionMenu);
-                _selector.OnSelectionChanged -= _renderElement.SetDrawProperty;
+                _selector.OnSelectionChanged -= SetDrawProperty;
+            }
+
+            void SetDrawProperty(TransformProperty prop)
+            {
+                if (_targetAnim == null)
+                {
+                    _renderElement.SetDrawTargets(0, null);
+                    return;
+                }
+                var container = _targetAnim[prop];
+                
+                _renderElement.SetDrawTargets((int)_selector.CurrentAxis, container[Axis.X], container[Axis.Y], container[Axis.Z], container[Axis.W]);
+                _renderElement.SetLegendHeader(prop.ToString());
             }
 
             void CreateFunctionMenu(MouseUpEvent evt)
