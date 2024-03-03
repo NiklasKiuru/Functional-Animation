@@ -6,6 +6,6 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/Functional Animation/Demos/Scenes/Demo Stress Test.unity
+    path: Assets/Functional Animation/Samples/Scenes/Demo Stress Test.unity
     guid: 43702d463353fd64384ad7512fe74f35
   m_configObjects: {}
