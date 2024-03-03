@@ -16,12 +16,15 @@
 * Unity Collections 1.2.4 or higher
 * Unity Mathematics 1.2.4 or higher
 
+## Installation
+Check [Releases](https://github.com/NiklasKiuru/Functional-Animation/releases) or use the link for Upm branch in Unitys package manager.
+
 ## Graph UI
 Manipulate graph data visually in the editor
 
 <img src="https://github.com/NiklasKiuru/Functional-Animation/blob/main/Documentation/animator_window.png" width="800">
 
-### Graph properties
+### Graph settings
 * Vertex count
 	- The amount of vertices drawn per graph. Using less vertices might help with some performance in the editor while higher amount makes the drawn graph more accurate.
 
