@@ -1,3 +1,4 @@
+using Aikom.FunctionalAnimation.Utility;
 using System;
 using System.Runtime.CompilerServices;
 using Unity.Burst;
@@ -19,6 +20,7 @@ namespace Aikom.FunctionalAnimation
         public delegate float EasingFunctionDelegate(float x);
 
         [BurstCompile]
+        [EFuntion]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float Linear(float x)
         {
@@ -169,6 +171,35 @@ namespace Aikom.FunctionalAnimation
         {
             return x < 0.5f ? (Mathf.Pow(2 * x, 2) * ((2.5949095f + 1) * 2 * x - 2.5949095f)) / 2 : (Mathf.Pow(2 * x - 2, 2) * ((2.5949095f + 1) * (x * 2 - 2) + 2.5949095f) + 2) / 2;
         }
+
+        [BurstCompile]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static float FizzleIn(float x)
+        {
+            return MathUtils.EvaluateCos(5, x, x);
+        }
+
+        [BurstCompile]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static float FizzleOut(float x)
+        {
+            return 1 - MathUtils.EvaluateCos(5, 1 - x, x);
+        }
+
+        [BurstCompile]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static float FizzleInOut(float x)
+        {
+            return x < 0.5f ? FizzleIn(x * 2) : 1 - FizzleOut((x - 0.5f) * 2);
+        }
+
+        [BurstCompile]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static float FizzleOutIn(float x)
+        {
+            return x < 0.5f ? FizzleOut(x * 2) : 1 - FizzleIn((x - 0.5f) * 2) * -1;
+        }
+
 
         #endregion
 

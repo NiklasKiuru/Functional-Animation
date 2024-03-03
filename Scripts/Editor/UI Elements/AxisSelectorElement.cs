@@ -13,6 +13,8 @@ namespace Aikom.FunctionalAnimation.Editor
         {
         }
 
+        public event Action OnFunctionRemoved;
+
         public GraphData GetSource()
         {
             return _container[CurrentSelection];
@@ -20,6 +22,7 @@ namespace Aikom.FunctionalAnimation.Editor
 
         public void Refresh()
         {
+            OnFunctionRemoved?.Invoke();
             OverrideTargetContainer(_container);
         }
 

@@ -21,13 +21,42 @@ namespace Aikom.FunctionalAnimation
         public AnimationData this[int index] { get => _animationData[index]; }
 
 #if UNITY_EDITOR
-        public static TransformAnimation SaveNew(string savePath)
+        public static TransformAnimation CreateNew(string savePath)
         {
             var asset = CreateInstance<TransformAnimation>();
             for(int i = 0; i < asset._animationData.Length; i++)
             {
                 asset._animationData[i] = new AnimationData();
             }
+            AssetDatabase.CreateAsset(asset, savePath);
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+            return asset;
+        }
+
+        public static TransformAnimation SaveAsNew(string savePath, TransformAnimation anim)
+        {
+            var asset = CreateInstance<TransformAnimation>();
+            for(int i = 0; i < asset._animationData.Length; ++i)
+            {   
+                var data = new AnimationData();
+                for(int j = 0; j < data.Length; ++j)
+                {
+                    data[j] = (GraphData)anim._animationData[i][j].Clone();
+                }
+                data.Mode = anim[i].Mode;
+                data.Duration = anim[i].Duration;
+                data.Start = anim[i].Start;
+                data.Target = anim[i].Target;
+                data.Offset = anim[i].Offset;
+                data.Animate = anim[i].Animate;
+                data.SeparateAxis = anim[i].SeparateAxis;
+                data.TimeControl = anim[i].TimeControl;
+                data.AnimateableAxis = anim[i].AnimateableAxis;
+
+                asset._animationData[i] = data;
+            }
+
             AssetDatabase.CreateAsset(asset, savePath);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();

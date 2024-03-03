@@ -4,6 +4,7 @@ using UnityEngine.UIElements;
 using UnityEditor.UIElements;
 using System;
 using UnityEngine;
+using Unity.Mathematics;
 
 namespace Aikom.FunctionalAnimation.Editor
 {
@@ -20,6 +21,18 @@ namespace Aikom.FunctionalAnimation.Editor
 
         public Axis CurrentAxis { get => _axisSelector.CurrentSelection; }
         public IGraphController AxisController { get => _axisSelector; }
+
+        /// <summary>
+        /// Invoked once a property has changed anywhere
+        /// </summary>
+        public event Action OnPropertyChanged;
+
+        /// <summary>
+        /// Invoked once any of the draw elements have been changed
+        /// </summary>
+        public event Action<bool4, TransformProperty> OnDrawElementsChanged;
+        
+        public Action OnFunctionRemoved;
 
         public PropertySelectorElement(ICustomIndexable<AnimationData, TransformProperty> container, 
             Dictionary<string, TransformProperty> elementMapping) : 
@@ -57,14 +70,21 @@ namespace Aikom.FunctionalAnimation.Editor
             else
                 offsetField.SetEnabled(false);
 
+            if (_axisSelector != null)
+                _axisSelector.OnFunctionRemoved -= OnFunctionRemoved;
             _axisSelector = new AxisSelectorElement(_container[TransformProperty.Position], _axisMapping);
             _axisSelector.OverrideTargetContainer(data);
+            _axisSelector.OnFunctionRemoved += OnFunctionRemoved;
             foreach (var subElement in _axisSelector.SubSelectionElements)
             {
                 var perAxisToggle = new Toggle();
                 perAxisToggle.style.marginBottom = 1;
                 var axis = subElement.Value;
-                perAxisToggle.RegisterValueChangedCallback(evt => data.AnimateableAxis[(int)axis] = evt.newValue);
+                perAxisToggle.RegisterValueChangedCallback(evt =>
+                {
+                    data.AnimateableAxis[(int)axis] = evt.newValue;
+                    OnDrawElementsChanged?.Invoke(new bool4(data.AnimateableAxis, !data.SeparateAxis), selection);
+                });
                 if (axis != Axis.W)
                 {
                     perAxisToggle.value = data.AnimateableAxis[(int)subElement.Value];
@@ -86,12 +106,40 @@ namespace Aikom.FunctionalAnimation.Editor
             element.Add(_axisSelector);
 
             // Callbacks
-            void OnAnimateToggleChange(ChangeEvent<bool> evt) => data.Animate = evt.newValue;
-            void OnDurationFieldChange(ChangeEvent<float> evt) => data.Duration = evt.newValue;
-            void OnTimeCtrlFieldChange(ChangeEvent<Enum> evt) => data.TimeControl = (TimeControl)evt.newValue;
-            void OnOffsetFieldChange(ChangeEvent<Vector3> evt) => data.Offset = evt.newValue;
-            void OnStartFieldChange(ChangeEvent<Vector3> evt) => data.Start = evt.newValue;
-            void OnEndFieldChange(ChangeEvent<Vector3> evt) => data.Target = evt.newValue;
+            void OnAnimateToggleChange(ChangeEvent<bool> evt) 
+            {
+                data.Animate = evt.newValue; 
+                OnPropertyChanged.Invoke();
+                if (!data.Animate)
+                    OnDrawElementsChanged?.Invoke(new bool4(), selection);
+                else
+                    OnDrawElementsChanged?.Invoke(new bool4(data.AnimateableAxis, !data.SeparateAxis), selection);
+            } 
+            void OnDurationFieldChange(ChangeEvent<float> evt) 
+            {
+                data.Duration = evt.newValue;
+                OnPropertyChanged.Invoke();
+            } 
+            void OnTimeCtrlFieldChange(ChangeEvent<Enum> evt) 
+            {
+                data.TimeControl = (TimeControl)evt.newValue;
+                OnPropertyChanged.Invoke();
+            }
+            void OnOffsetFieldChange(ChangeEvent<Vector3> evt) 
+            {
+                data.Offset = evt.newValue;
+                OnPropertyChanged.Invoke();
+            }
+            void OnStartFieldChange(ChangeEvent<Vector3> evt) 
+            {
+                data.Start = evt.newValue;
+                OnPropertyChanged.Invoke();
+            }
+            void OnEndFieldChange(ChangeEvent<Vector3> evt) 
+            {
+                data.Target = evt.newValue;
+                OnPropertyChanged.Invoke();
+            }
 
             void OnModeCtrlFieldChange(ChangeEvent<Enum> evt)
             {
@@ -108,6 +156,7 @@ namespace Aikom.FunctionalAnimation.Editor
                     endField.SetEnabled(true);
                     offsetField.SetEnabled(false);
                 }
+                OnPropertyChanged.Invoke();
             }
 
             void OnAxisToggleChange(ChangeEvent<bool> evt)
@@ -122,6 +171,8 @@ namespace Aikom.FunctionalAnimation.Editor
                 {
                     _axisSelector.LockSelection(Axis.W);
                 }
+                OnPropertyChanged.Invoke();
+                OnDrawElementsChanged?.Invoke(new bool4(data.AnimateableAxis, !data.SeparateAxis), selection);
             }
 
             animateToggle.RegisterValueChangedCallback(OnAnimateToggleChange);

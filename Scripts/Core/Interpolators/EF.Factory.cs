@@ -545,7 +545,7 @@ namespace Aikom.FunctionalAnimation
         /// <param name="duration"></param>
         /// <param name="ctrl"></param>
         /// <returns></returns>
-        private static FloatInterpolator CreateBasic(float from, float to, float duration, TimeControl ctrl, int stride = 1)
+        public static FloatInterpolator CreateBasic(float from, float to, float duration, TimeControl ctrl, int stride = 1)
         {
             return new FloatInterpolator
             {
@@ -566,7 +566,7 @@ namespace Aikom.FunctionalAnimation
         /// <param name="stride"></param>
         /// <param name="axis"></param>
         /// <returns></returns>
-        private static Vector2Interpolator CreateBasic(float2 from, float2 to, float duration, TimeControl ctrl, int2 stride, bool2 axis)
+        public static Vector2Interpolator CreateBasic(float2 from, float2 to, float duration, TimeControl ctrl, int2 stride, bool2 axis)
         {
             return new Vector2Interpolator
             {
@@ -579,7 +579,7 @@ namespace Aikom.FunctionalAnimation
         }
 
         /// <summary>
-        /// Creates a basic vec2 interpolator
+        /// Creates a basic vec3 interpolator
         /// </summary>
         /// <param name="from"></param>
         /// <param name="to"></param>
@@ -588,7 +588,7 @@ namespace Aikom.FunctionalAnimation
         /// <param name="stride"></param>
         /// <param name="axis"></param>
         /// <returns></returns>
-        private static Vector3Interpolator CreateBasic(float3 from, float3 to, float duration, TimeControl ctrl, int3 stride, bool3 axis)
+        public static Vector3Interpolator CreateBasic(float3 from, float3 to, float duration, TimeControl ctrl, int3 stride, bool3 axis)
         {
             return new Vector3Interpolator
             {
@@ -601,7 +601,7 @@ namespace Aikom.FunctionalAnimation
         }
 
         /// <summary>
-        /// Creates a basic vec2 interpolator
+        /// Creates a basic vec4 interpolator
         /// </summary>
         /// <param name="from"></param>
         /// <param name="to"></param>
@@ -610,7 +610,7 @@ namespace Aikom.FunctionalAnimation
         /// <param name="stride"></param>
         /// <param name="axis"></param>
         /// <returns></returns>
-        private static Vector4Interpolator CreateBasic(float4 from, float4 to, float duration, TimeControl ctrl, int4 stride, bool4 axis)
+        public static Vector4Interpolator CreateBasic(float4 from, float4 to, float duration, TimeControl ctrl, int4 stride, bool4 axis)
         {
             return new Vector4Interpolator
             {

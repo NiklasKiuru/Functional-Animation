@@ -6,14 +6,22 @@ using UnityEngine;
 namespace Aikom.FunctionalAnimation
 {
     [Serializable]
-    public class GraphData
+    public class GraphData : IDisposable, ICloneable
     {
         [SerializeField] private Function[] _functions = new Function[1];
         [SerializeField] private Timeline _timeline;
 
         public IReadOnlyCollection<Function> Functions { get => _functions; }
         public IReadOnlyCollection<Vector2> Nodes { get => _timeline.Nodes; }
-        public int Length { get => _functions.Length; }
+        public int Length 
+        { 
+            get
+            {
+                if (_functions != null)
+                    return _functions.Length;
+                return 0;
+            }
+        }
 
         /// <summary>
         /// Creates new graph data with a given function as the default first function
@@ -29,7 +37,7 @@ namespace Aikom.FunctionalAnimation
         /// Generates a function that modulates a value with this data based on given input
         /// </summary>
         /// <returns></returns>
-        public Func<float, float> GenerateFunction()
+        public Func<float, float> GetEvaluator()
         {
             var funcs = new Func<float, float>[_functions.Length];
             for (int i = 0; i < _functions.Length; i++)
@@ -181,6 +189,23 @@ namespace Aikom.FunctionalAnimation
         public void ChangeFunction(int index, Function func)
         {
             _functions[index] = func;
+        }
+
+        public void Dispose()
+        {
+            GC.SuppressFinalize(this);
+        }
+
+        public object Clone()
+        {
+            var cloneGraph = new GraphData();
+            cloneGraph._functions = (Function[])_functions.Clone();
+            cloneGraph._timeline = new Timeline(Length + 1);
+            for(int i = 0; i < _functions.Length + 1; ++i)
+            {
+                cloneGraph._timeline.Nodes[i] = _timeline.Nodes[i];
+            }
+            return cloneGraph;
         }
     }
 }
