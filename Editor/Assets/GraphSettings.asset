@@ -12,8 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2c8588f3eb3d3134b808c031ea6ef866, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _vertexCount: 1000
-  _gridLineCount: 12
+  _vertexCount: 500
+  _gridLineCount: 10
   _legendColors:
   - {r: 1, g: 0, b: 0, a: 1}
   - {r: 0, g: 1, b: 0, a: 1}
