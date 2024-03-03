@@ -28,6 +28,10 @@ namespace Aikom.FunctionalAnimation
         EaseInBack,
         EaseOutBack,
         EaseInOutBack,
+        FizzleIn,
+        FizzleOut,
+        FizzleInOut,
+        FizzleOutIn,
     }
 
     /// <summary>
@@ -57,6 +61,10 @@ namespace Aikom.FunctionalAnimation
         { Function.EaseInBack, EF.EaseInBack },
         { Function.EaseOutBack, EF.EaseOutBack },
         { Function.EaseInOutBack, EF.EaseInOutBack },
+        { Function.FizzleIn, EF.FizzleIn },
+        { Function.FizzleOut, EF.FizzleOut },
+        { Function.FizzleInOut, EF.FizzleInOut },
+        { Function.FizzleOutIn, EF.FizzleOutIn },
     };
 
         private static readonly FunctionPointer<EF.EasingFunctionDelegate> _linear = BurstCompiler.CompileFunctionPointer<EF.EasingFunctionDelegate>(EF.Linear);
@@ -78,6 +86,10 @@ namespace Aikom.FunctionalAnimation
         private static readonly FunctionPointer<EF.EasingFunctionDelegate> _easeInBack = BurstCompiler.CompileFunctionPointer<EF.EasingFunctionDelegate>(EF.EaseInBack);
         private static readonly FunctionPointer<EF.EasingFunctionDelegate> _easeOutBack = BurstCompiler.CompileFunctionPointer<EF.EasingFunctionDelegate>(EF.EaseOutBack);
         private static readonly FunctionPointer<EF.EasingFunctionDelegate> _easeInOutBack = BurstCompiler.CompileFunctionPointer<EF.EasingFunctionDelegate>(EF.EaseInOutBack);
+        private static readonly FunctionPointer<EF.EasingFunctionDelegate> _fizzleIn = BurstCompiler.CompileFunctionPointer<EF.EasingFunctionDelegate>(EF.FizzleIn);
+        private static readonly FunctionPointer<EF.EasingFunctionDelegate> _fizzleOut = BurstCompiler.CompileFunctionPointer<EF.EasingFunctionDelegate>(EF.FizzleInOut);
+        private static readonly FunctionPointer<EF.EasingFunctionDelegate> _fizzleInOut = BurstCompiler.CompileFunctionPointer<EF.EasingFunctionDelegate>(EF.FizzleInOut);
+        private static readonly FunctionPointer<EF.EasingFunctionDelegate> _fizzleOutIn = BurstCompiler.CompileFunctionPointer<EF.EasingFunctionDelegate>(EF.FizzleOutIn);
 
         /// <summary>
         /// Function pointers for jobs
@@ -103,6 +115,10 @@ namespace Aikom.FunctionalAnimation
             {Function.EaseInBack, _easeInBack},
             {Function.EaseOutBack, _easeOutBack},
             {Function.EaseInOutBack, _easeInOutBack},
+            {Function.FizzleIn, _fizzleIn},
+            {Function.FizzleOut, _fizzleInOut},
+            {Function.FizzleInOut, _fizzleInOut},
+            {Function.FizzleOutIn, _fizzleOutIn},
         };
     }
 }

@@ -21,9 +21,9 @@ namespace Aikom.FunctionalAnimation
         /// </summary>
         public float2 End;
 
-        public RangedFunction(FunctionPointer<EF.EasingFunctionDelegate> pointer, float2 start, float2 end)
+        public RangedFunction(Function function, float2 start, float2 end)
         {
-            Pointer = pointer;
+            Pointer = EditorFunctions.Pointers[function];
             Start = start;
             End = end;
         }

@@ -15,38 +15,42 @@ MonoBehaviour:
   _duration: 4
   _animationData:
   - X:
+      _functions: 020000000300000001000000
+      _timeline:
+        _nodes:
+        - {x: 0, y: 0}
+        - {x: 0.25, y: 1}
+        - {x: 0.75, y: -1}
+        - {x: 1, y: 0}
+    Y:
+      _functions: 0300000003000000
+      _timeline:
+        _nodes:
+        - {x: 0, y: -1}
+        - {x: 0.5, y: 1}
+        - {x: 1, y: -1}
+    Z:
       _functions: 000000000000000000000000
       _timeline:
         _nodes:
-        - {x: 0, y: 0.4994709}
-        - {x: 0.25074446, y: 1}
-        - {x: 0.7493125, y: 0}
-        - {x: 1, y: 0.4973545}
-    Y:
-      _functions: 0000000000000000
-      _timeline:
-        _nodes:
         - {x: 0, y: 0}
-        - {x: 0.50037986, y: 1}
-        - {x: 1, y: 0}
-    Z:
-      _functions: 00000000
-      _timeline:
-        _nodes:
-        - {x: 0, y: 0}
-        - {x: 1, y: 1}
+        - {x: 0.24976017, y: -1}
+        - {x: 0.7501247, y: 1}
+        - {x: 1, y: -0.000000018626451}
     W:
       _functions: 00000000
       _timeline:
         _nodes:
         - {x: 0, y: 0}
-        - {x: 1, y: 1}
+        - {x: 1, y: 0.8738245}
+    Mode: 0
+    Start: {x: 0, y: 0, z: 0}
     Target: {x: 0, y: 0, z: 0}
-    Offset: {x: 5, y: 5, z: 0}
+    Offset: {x: 5, y: 5, z: 5}
     Animate: 1
     Sync: 1
     SeparateAxis: 1
-    Duration: 0
+    Duration: 2
     TimeControl: 0
     AnimateableAxis:
       x: 1
@@ -82,17 +86,19 @@ MonoBehaviour:
         _nodes:
         - {x: 0, y: 0}
         - {x: 1, y: 1}
+    Mode: 0
+    Start: {x: 0, y: 0, z: 0}
     Target: {x: 0, y: 0, z: 0}
     Offset: {x: 90, y: 90, z: 180}
     Animate: 1
     Sync: 1
     SeparateAxis: 1
-    Duration: 0
+    Duration: 2
     TimeControl: 0
     AnimateableAxis:
       x: 1
       y: 1
-      z: 1
+      z: 0
   - X:
       _functions: 00000000
       _timeline:
@@ -117,9 +123,11 @@ MonoBehaviour:
         _nodes:
         - {x: 0, y: 0}
         - {x: 1, y: 1}
+    Mode: 0
+    Start: {x: 0, y: 0, z: 0}
     Target: {x: 0, y: 0, z: 0}
     Offset: {x: 0, y: 0, z: 0}
-    Animate: 1
+    Animate: 0
     Sync: 0
     SeparateAxis: 1
     Duration: 0

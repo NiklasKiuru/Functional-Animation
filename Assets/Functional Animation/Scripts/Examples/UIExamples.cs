@@ -14,8 +14,8 @@ public class UIExamples : MonoBehaviour
 {
     [SerializeField] private UIDocument _mainDoc;
     [SerializeField] private List<PanelEaseSetttings> _settings = new List<PanelEaseSetttings>();
-    [SerializeField] private GraphData _onClickShizzle;
     [SerializeField] private float _fizzleAmplitude;
+    [SerializeField] private GraphData _test;
 
     private void Start()
     {
@@ -49,7 +49,7 @@ public class UIExamples : MonoBehaviour
 
         var shizzleElement = CreateSubContainer("Fizzle element:");
         var pos = shizzleElement.transform.matrix.GetPosition();
-        var animHandle = EF.Create(pos.x, pos.x + _fizzleAmplitude, 1, _onClickShizzle)
+        var animHandle = EF.Create(pos.x, pos.x + _fizzleAmplitude, 1, _test)
             .OnUpdate(this, (v) => shizzleElement.transform.position = new Vector3(v, pos.y, 0))
             .Pause();
         shizzleElement.RegisterCallback<MouseDownEvent>((evt) => 

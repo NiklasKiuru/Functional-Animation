@@ -50,13 +50,33 @@ namespace Aikom.FunctionalAnimation.Utility
 
         public static Func<float, float> GenerateWaveSin(float freq, float amplitude)
         {
-            return null;
+            var omega = 2 * Mathf.PI * freq;
+            return (time) => amplitude * Mathf.Sin(omega * time);
         }
 
         public static Func<float, float> GenerateWaveCos(float freq, float amplitude)
         {
             var omega = 2 * Mathf.PI * freq;
             return (time) => amplitude * Mathf.Cos(omega * time);
+        }
+
+        public static float EvaluateCos(float freq, float amplitude, float x)
+        {
+            var omega = 2 * Mathf.PI * freq;
+            return amplitude * Mathf.Cos(omega * x);
+        }
+
+        public static float EvaluateSin(float freq, float amplitude, float x)
+        {
+            var omega = 2 * Mathf.PI * freq;
+            return amplitude * Mathf.Sin(omega * x);
+        }
+
+        public static int RoundPos(float value)
+        {
+            var floor = (int)value;
+            var remainder = value - floor;
+            return remainder < 0.5f ? floor : floor + 1;
         }
     }
 }

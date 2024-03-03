@@ -68,6 +68,90 @@ namespace Aikom.FunctionalAnimation.Extensions
         }
 
         /// <summary>
+        /// Creates an axis aligned orbit with current position as its center point
+        /// </summary>
+        /// <param name="tr"></param>
+        /// <param name="duration"></param>
+        /// <param name="radius"></param>
+        /// <param name="direction"></param>
+        /// <returns></returns>
+        public static IInterpolatorHandle<float3> OrbitXY(this Transform tr, float duration, float radius, int direction)
+        {
+            var start = tr.position;
+            var sign = Mathf.Sign(direction);
+            var end = start + new Vector3(sign * radius, radius, 0);
+            var cont = new FunctionContainer(3);
+
+            // x - axis
+            cont.Set(0, 0, new RangedFunction(Function.EaseOutSine, new float2(0, 0), new float2(0.25f, 1)));
+            cont.Set(0, 1, new RangedFunction(Function.EaseInOutSine, new float2(0.25f, 1), new float2(0.75f, -1)));
+            cont.Set(0, 2, new RangedFunction(Function.EaseInSine, new float2(0.75f, -1), new float2(1, 0)));
+
+            // y - axis
+            cont.Set(1, 0, new RangedFunction(Function.EaseInOutSine, new float2(0, -1), new float2(0.5f, 1)));
+            cont.Set(1, 1, new RangedFunction(Function.EaseInOutSine, new float2(0.5f, 1), new float2(1, -1)));
+            var processor = EF.CreateBasic(start, end, duration, TimeControl.Loop, new int3(3, 2, 0), new bool3(true, true, false));
+
+            return EFAnimator.RegisterTarget<float3, Vector3Interpolator>(processor, cont);
+        }
+
+        /// <summary>
+        /// Creates an axis aligned orbit with current position as its center point
+        /// </summary>
+        /// <param name="tr"></param>
+        /// <param name="duration"></param>
+        /// <param name="radius"></param>
+        /// <param name="direction"></param>
+        /// <returns></returns>
+        public static IInterpolatorHandle<float3> OrbitZY(this Transform tr, float duration, float radius, int direction)
+        {
+            var start = tr.position;
+            var sign = Mathf.Sign(direction);
+            var end = start + new Vector3(0, radius, sign * radius);
+            var cont = new FunctionContainer(3);
+
+            // z - axis
+            cont.Set(2, 0, new RangedFunction(Function.EaseOutSine, new float2(0, 0), new float2(0.25f, 1)));
+            cont.Set(2, 1, new RangedFunction(Function.EaseInOutSine, new float2(0.25f, 1), new float2(0.75f, -1)));
+            cont.Set(2, 2, new RangedFunction(Function.EaseInSine, new float2(0.75f, -1), new float2(1, 0)));
+
+            // y - axis
+            cont.Set(1, 0, new RangedFunction(Function.EaseInOutSine, new float2(0, -1), new float2(0.5f, 1)));
+            cont.Set(1, 1, new RangedFunction(Function.EaseInOutSine, new float2(0.5f, 1), new float2(1, -1)));
+            var processor = EF.CreateBasic(start, end, duration, TimeControl.Loop, new int3(0, 2, 3), new bool3(false, true, true));
+
+            return EFAnimator.RegisterTarget<float3, Vector3Interpolator>(processor, cont);
+        }
+
+        /// <summary>
+        /// Creates an axis aligned orbit with current position as its center point
+        /// </summary>
+        /// <param name="tr"></param>
+        /// <param name="duration"></param>
+        /// <param name="radius"></param>
+        /// <param name="direction"></param>
+        /// <returns></returns>
+        public static IInterpolatorHandle<float3> OrbitXZ(this Transform tr, float duration, float radius, int direction)
+        {
+            var start = tr.position;
+            var sign = Mathf.Sign(direction);
+            var end = start + new Vector3(sign * radius, 0, radius);
+            var cont = new FunctionContainer(3);
+
+            // x - axis
+            cont.Set(0, 0, new RangedFunction(Function.EaseOutSine, new float2(0, 0), new float2(0.25f, 1)));
+            cont.Set(0, 1, new RangedFunction(Function.EaseInOutSine, new float2(0.25f, 1), new float2(0.75f, -1)));
+            cont.Set(0, 2, new RangedFunction(Function.EaseInSine, new float2(0.75f, -1), new float2(1, 0)));
+
+            // z - axis
+            cont.Set(2, 0, new RangedFunction(Function.EaseInOutSine, new float2(0, -1), new float2(0.5f, 1)));
+            cont.Set(2, 1, new RangedFunction(Function.EaseInOutSine, new float2(0.5f, 1), new float2(1, -1)));
+            var processor = EF.CreateBasic(start, end, duration, TimeControl.Loop, new int3(3, 0, 2), new bool3(true, false, true));
+
+            return EFAnimator.RegisterTarget<float3, Vector3Interpolator>(processor, cont);
+        }
+
+        /// <summary>
         /// Modulates the intensity of the light from current to target
         /// </summary>
         /// <param name="light"></param>

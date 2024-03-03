@@ -25,7 +25,6 @@ namespace Aikom.FunctionalAnimation
         public Vector3 Target;
         public Vector3 Offset;
         public bool Animate;
-        public bool Sync;
         public bool SeparateAxis;
         public float Duration;
         public TimeControl TimeControl;
@@ -47,7 +46,7 @@ namespace Aikom.FunctionalAnimation
                 };
             }
 
-            private set
+            internal set
             {
                 switch (index)
                 {
@@ -83,7 +82,7 @@ namespace Aikom.FunctionalAnimation
                 };
             }
 
-            private set
+            internal set
             {
                 switch (index)
                 {
@@ -136,7 +135,7 @@ namespace Aikom.FunctionalAnimation
         public Func<float, float> GenerateFunction(Axis axis)
         {
             var data = this[axis];
-            return data.GenerateFunction();
+            return data.GetEvaluator();
         }
 
         /// <summary>

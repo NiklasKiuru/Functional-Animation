@@ -15,7 +15,6 @@
 * Burst 1.6.6 or higher
 * Unity Collections 1.2.4 or higher
 * Unity Mathematics 1.2.4 or higher
-* Core RP Library 12.1.11 or higher
 
 ## Graph UI
 Manipulate graph data visually in the editor
@@ -123,8 +122,6 @@ Running a single transform group with even thousands of objects is fairly light 
 * Avoid using non root objects in groups
 	- Any level of nesting in transform hierarchy always reduces performance since the engine marks the entire hierarchy as dirty on change
 	- Using simple root objects is the most performant way possible
-* Consider rendering optimizations
-	- Haven't tested anything for shaders yet
 
 You can also change the execution order of EFAnimator to update before all other scripts to guarantee the most amount of time possible for the jobs to complete.
 You can do this from Edit -> Project Settings -> Script Execution Order.
@@ -287,8 +284,59 @@ var id = EF.CreateNonAlloc(from, to, duration, Function.Linear, TimeControl.Play
 
 // You can ask from the animator if the process exists and retrieve the actual processor
 EFAnimator.TryGetProcessor<float, FloatInterpolator>(id, out processor);
+
+// If the there is a process active the retrieved processor holds the actual current value that was calculated this frame
+var currentVal = processor.Current;
+
+// Now if we wait for some time after we got the processor we can directly acces the current value through it
+var updatedVal = processor.GetRealTimeValue();
+
+// It is also possible to start the process again but it is highly recommended not to do so
+// Using invalid parameters or functioncontainers can cause crashes and memory leaks
+var newProcess = processor.ReRegister(new FunctionContainer(1, someGraph.GetRangedFunctionArray()));
+
+// Current implimentation also does not actively check for alive state so the following will always return true:
+var isAlwaysTrue = newProcess.IsAlive;
 ```
 
-
-
 ## Graph and function system
+You can create and modify custom graphs just like with Unity's basic graphs by creating a new `GraphData` variable in your `MonoBehaviour` class:
+
+```cs
+
+[SerializeField] private GraphData _myData;
+
+```
+In the inspector you can see a button `Edit` for the property and clicking it will open a new window to edit your graph.
+This editor works very similar to the animator window and saves the changes made into the graph automatically.
+Currently editing is not supported on scriptable objects due to some issues with serialization.
+
+If you want to edit graphs with code you can do so with the following examples.
+Note that every new graph object always has atleast one function within it in order to function. You can define this in the constructor if you want to. Some example operations `GraphData` objects:
+
+```cs
+// Defines the starting function of the graph
+var newGraph = new GraphData(Function.EaseInExp);
+
+// Adds a new function into the graph at position 0.5 with ending value of 0
+// Since there is only one function in the graph the second one is appended to the graph into second position
+// The first function defaults into starting from 0 and ending to 1 so the second appended function will start from 1
+// and end with the specified y-value of the given vector. 
+newGraph.AddFunction(Function.EaseOutExp, new Vector2(0,5f, 0));
+
+// The value ranges used in graphs are [0, 1] for time (x) and [-1, 1] for values (y).
+// You can move individual nodes in the graph within these ranges freely and this function
+// will return the actual valid vector for the node that was used
+newGraph.MoveTimelineNode(1, new Vector2(0.75f, -1));
+
+// Removes a node and returns if the node was actually removed
+// If the graph only contains a single function the function cannot be removed from the graph
+newGraph.RemoveFunction(1);
+
+// Evaluates the graph at position 0.5
+newGraph.GetEvaluator().Invoke(0.5f);
+
+// Gets the BurstCompatible function array buffer
+var arr = newGraph.GetRangedFunctionArray();
+
+```
