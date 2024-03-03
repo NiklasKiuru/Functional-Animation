@@ -5,7 +5,7 @@ using UnityEditor;
 
 namespace Aikom.FunctionalAnimation.Editor
 {
-    [FilePath("Assets/Functional Animation/UI/GraphSettings.asset", FilePathAttribute.Location.ProjectFolder)]
+    [FilePath("Assets/Functional Animation/Editor/Assets/GraphSettings.asset", FilePathAttribute.Location.ProjectFolder)]
     public class GraphSettings : ScriptableSingleton<GraphSettings>
     {
         [SerializeField] private int _vertexCount;
