@@ -17,7 +17,10 @@
 * Unity Mathematics 1.2.4 or higher
 
 ## Installation
-Check [Releases](https://github.com/NiklasKiuru/Functional-Animation/releases) or use the link for Upm branch in Unitys package manager.
+Check [Releases](https://github.com/NiklasKiuru/Functional-Animation/releases) or use this link for most recent version in Unitys package manager.
+```
+https://github.com/NiklasKiuru/Functional-Animation.git?path=/Assets/Functional%20Animation
+```
 
 ## Graph UI
 Manipulate graph data visually in the editor
