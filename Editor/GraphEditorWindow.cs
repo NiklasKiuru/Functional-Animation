@@ -121,7 +121,6 @@ namespace Aikom.FunctionalAnimation.Editor
         protected override void OnDisable()
         {
             base.OnDisable();
-            ApplyModifications();
             _renderElement.OnGraphModified -= ApplyModifications;
         }
 
