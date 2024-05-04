@@ -352,7 +352,7 @@ var arr = newGraph.GetRangedFunctionArray();
 
 ```
 
-###User defined functions
+### User defined functions
 You can define a new EF compatible function from anywhere in your project as long as it fulfills the following criteria:
 -	The function is type of EF.EasingFunctionDelegate
 - 	The function can be compiled into a FunctionPointer by burstcompiler
