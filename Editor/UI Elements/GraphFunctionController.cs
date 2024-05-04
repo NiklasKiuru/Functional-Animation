@@ -2,6 +2,7 @@ using Aikom.FunctionalAnimation.Utility;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.Remoting.Messaging;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -13,12 +14,12 @@ namespace Aikom.FunctionalAnimation.Editor
         /// <summary>
         /// Selection field for the GraphFunctionController
         /// </summary>
-        public class FunctionSelectionField : EnumField 
+        public class FunctionSelectionField : PopupField<FunctionAlias> 
         {   
             /// <summary>
             /// Represents the position of this field in the source container
             /// </summary>
-            public int Index { get; set; }
+            public int Index { get; private set; }
 
             /// <summary>
             /// Removes this index from the source container once clicked
@@ -40,8 +41,15 @@ namespace Aikom.FunctionalAnimation.Editor
             /// </summary>
             /// <param name="label"></param>
             /// <param name="defaultValue"></param>
-            public FunctionSelectionField(string label, Enum defaultValue) : base(label, defaultValue)
-            {   
+            public FunctionSelectionField(string label, int index, FunctionAlias defaultValue)
+            {
+                SetValueWithoutNotify(defaultValue);
+                choices = BurstFunctionCache.GetDefinitions().ToList();
+                formatListItemCallback = (a) => a.Value;
+                formatSelectedValueCallback = (a) => a.Value;
+                Index = index;
+                labelElement.text = label;
+
                 style.flexDirection = FlexDirection.Row;
                 labelElement.style.unityTextAlign = TextAnchor.MiddleCenter;
                 labelElement.style.minWidth = new StyleLength(new Length(20f, LengthUnit.Pixel));

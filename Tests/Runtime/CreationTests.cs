@@ -3,6 +3,7 @@ using NUnit.Framework;
 using Unity.Mathematics;
 using UnityEngine;
 using Aikom.FunctionalAnimation.Utility;
+using Unity.Burst;
 
 namespace Aikom.FunctionalAnimation.Tests
 {
@@ -18,6 +19,8 @@ namespace Aikom.FunctionalAnimation.Tests
             {
                 EF.Create(from, to, duration, Function.EaseOutElastic).GetIdentifier(),
                 EF.Create(from, to, duration, new RangedFunction(Function.EaseOutCirc)).GetIdentifier(),
+                EF.Create(from, to , duration, new RangedFunction(new FunctionAlias("Test"), float2.zero, new float2(1,1))).GetIdentifier(),
+                EF.Create(from, to , duration, new RangedFunction(CustomFuncType.CustomFunction, float2.zero, new float2(1,1))).GetIdentifier(),
                 EF.Create(from, to, duration, new GraphData()).GetIdentifier(),
                 EF.CreateNonAlloc(from, to, duration, Function.EaseOutBack, TimeControl.Loop, 1),
                 EF.CreateNonAlloc(from, to, duration, Function.Linear, TimeControl.PlayOnce, 1, (v) => Debug.Log(v)),
@@ -94,6 +97,17 @@ namespace Aikom.FunctionalAnimation.Tests
                 EFAnimator.TryGetProcessor<T, D>(id, out var proc);
                 Assert.That(proc.From.Equals(from) && proc.To.Equals(to) && proc.Clock.Duration == duration &&
                     id.Equals(proc.GetIdentifier()));
+            }
+        }
+
+        [BurstCompile]
+        public class CustomFuncType
+        {
+            [BurstCompile]
+            [EFunction("Test")]
+            public static float CustomFunction(float x)
+            {
+                return x * 2;
             }
         }
     }

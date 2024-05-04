@@ -4,7 +4,7 @@ using UnityEngine;
 namespace Aikom.FunctionalAnimation.Editor
 {
     [CustomPropertyDrawer(typeof(GraphData))]
-    public class GraphAttributeDrawer : PropertyDrawer
+    public class GraphDataDrawer : PropertyDrawer
     {
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {

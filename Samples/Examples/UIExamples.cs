@@ -16,6 +16,7 @@ public class UIExamples : MonoBehaviour
     [SerializeField] private List<PanelEaseSetttings> _settings = new List<PanelEaseSetttings>();
     [SerializeField] private float _fizzleAmplitude;
     [SerializeField] private GraphData _test;
+    [SerializeField] private FunctionAlias _alias;
 
     private void Start()
     {

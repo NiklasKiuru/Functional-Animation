@@ -17,6 +17,8 @@ namespace Aikom.FunctionalAnimation
 
     public static class AnimatorExtensions
     {   
+        private static TransformProperty[] s_cachedEnumArray = (TransformProperty[])Enum.GetValues(typeof(TransformProperty));
+
         /// <summary>
         /// Clears the previous animation and sets a new one for the animator
         /// </summary>
@@ -28,7 +30,7 @@ namespace Aikom.FunctionalAnimation
         {
             if (animator.Handle.IsActive)
                 animator.Handle.KillAll();
-            var props = (TransformProperty[])Enum.GetValues(typeof(TransformProperty));
+            var props = s_cachedEnumArray;
             for (int i = 0; i < props.Length; i++)
             {
                 var prop = props[i];
@@ -42,14 +44,14 @@ namespace Aikom.FunctionalAnimation
                 {
                     var sharedGraph = data[Axis.W];
                     var sharedHandle = EF.Create(from, to, data.Duration, sharedGraph, data.TimeControl)
-                        .OnUpdate(animator, SetVal);
+                        .OnUpdate(target, SetVal);
                     animator.Handle.Set(prop, sharedHandle);
                 }
                 else
                 {
                     var mixedHandle = EF.Create(from, to, data.Duration,
                         data[Axis.X], data[Axis.Y], data[Axis.Z], data.AnimateableAxis, data.TimeControl)
-                        .OnUpdate(animator, SetVal);
+                        .OnUpdate(target, SetVal);
                     animator.Handle.Set(prop, mixedHandle);
                 }
 

@@ -21,25 +21,54 @@ namespace Aikom.FunctionalAnimation
         /// </summary>
         public float2 End;
 
+        /// <summary>
+        /// Creates a ranged function with defined starting and ending points
+        /// </summary>
+        /// <param name="function"></param>
+        /// <param name="start"></param>
+        /// <param name="end"></param>
         public RangedFunction(Function function, float2 start, float2 end)
         {
-            Pointer = EditorFunctions.Pointers[function];
+            Pointer = BurstFunctionCache.GetCachedPointer(function);
             Start = start;
             End = end;
         }
 
-        public RangedFunction(Function function)
+        /// <summary>
+        /// Creates a ranged function from a known alias
+        /// </summary>
+        /// <param name="alias"></param>
+        /// <param name="start"></param>
+        /// <param name="end"></param>
+        public RangedFunction(FunctionAlias alias, float2 start, float2 end)
         {
-            Pointer = EditorFunctions.Pointers[function];
-            Start = float2.zero;
-            End = new float2(1,1);
+            Start = start;
+            End = end;
+            Pointer = BurstFunctionCache.GetCachedPointer(alias);
         }
 
-        public RangedFunction(Function function, float startVal, float endVal)
+        /// <summary>
+        /// Creates a ranged function from a delegate
+        /// </summary>
+        /// <param name="del">The used delegate must fulfill BurstCompiler function pointer compilation requirements and must have <see cref="EFunctionAttribute"/></param>
+        /// <param name="start"></param>
+        /// <param name="end"></param>
+        public RangedFunction(EF.EasingFunctionDelegate del, float2 start, float2 end)
         {
-            Pointer = EditorFunctions.Pointers[function];
-            Start = new float2(0, startVal);
-            End = new float2(1, endVal);
+            Start = start;
+            End = end;
+            Pointer = BurstFunctionCache.GetCachedPointer(del);
+        }
+
+        /// <summary>
+        /// Creates a ranged function with predefined range of [0,0] -> [1,1]
+        /// </summary>
+        /// <param name="function"></param>
+        public RangedFunction(Function function)
+        {
+            Pointer = BurstFunctionCache.GetCachedPointer(function);
+            Start = float2.zero;
+            End = new float2(1,1);
         }
 
         /// <summary>

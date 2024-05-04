@@ -16,12 +16,12 @@ namespace Aikom.FunctionalAnimation.Tests
             var hasCompleted = false;
             var isKilled = false;
             var handle1 = EF.Create(0, 1, 2, Function.Linear)
-                .OnUpdate(this, (v) => val = v)
-                .OnStart(this, (v) => hasStarted = true)
-                .OnPause(this, (v) => isPaused = true)
-                .OnResume(this, (v) => hasResumed = true)
-                .OnComplete(this, (v) => hasCompleted = true)
-                .OnKill(this, (v) => isKilled = true);
+                .OnUpdate((v) => val = v)
+                .OnStart((v) => hasStarted = true)
+                .OnPause((v) => isPaused = true)
+                .OnResume((v) => hasResumed = true)
+                .OnComplete((v) => hasCompleted = true)
+                .OnKill((v) => isKilled = true);
 
             yield return new WaitForSeconds(1);
             // Cant really easily test the start since it will be called once the process has actually started
@@ -47,7 +47,7 @@ namespace Aikom.FunctionalAnimation.Tests
             var hasStarted = false;
             var handle1 = EF.Create(0, 1, 2, Function.Linear)
                 .Hibernate(1)
-                .OnStart(this, (v) => hasStarted = true);
+                .OnStart((v) => hasStarted = true);
                 
             yield return new WaitForSeconds(1);
             // Since start call is execution order dependent there has to be one frame delay to guarantee it
@@ -65,13 +65,15 @@ namespace Aikom.FunctionalAnimation.Tests
         public IEnumerator Kill_Test()
         {   
             var hasCompleted = false;
+            var hasDied = false;
             var handle = EF.Create(0, 1, 2, Function.Linear)
-                .OnComplete(this, (V) => hasCompleted = true);
-
+                .OnComplete((V) => hasCompleted = true);
+            var go = new GameObject();
+            var handle1 = EF.Create(0,1,0.5f, Function.Linear).OnComplete(go, (v) => go.transform.position = new Vector3(v,v,v));
+            UnityEngine.Object.Destroy(go);
             yield return new WaitForSeconds(1);
             handle.Kill();
             Assert.IsFalse(hasCompleted);
-
         }
 
     }

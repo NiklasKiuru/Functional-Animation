@@ -1,17 +1,16 @@
 using System;
 using System.Collections.Generic;
-using Unity.Burst;
 using UnityEngine;
 
 namespace Aikom.FunctionalAnimation
 {
     [Serializable]
-    public class GraphData : IDisposable, ICloneable
+    public class GraphData : ICloneable
     {
-        [SerializeField] private Function[] _functions = new Function[1];
+        [SerializeField] private FunctionAlias[] _functions = new FunctionAlias[1];
         [SerializeField] private Timeline _timeline;
 
-        public IReadOnlyCollection<Function> Functions { get => _functions; }
+        public IReadOnlyCollection<FunctionAlias> Functions { get => _functions; }
         public IReadOnlyCollection<Vector2> Nodes { get => _timeline.Nodes; }
         public int Length 
         { 
@@ -29,7 +28,7 @@ namespace Aikom.FunctionalAnimation
         /// <param name="func"></param>
         public GraphData(Function func = Function.Linear)
         {
-            _functions[0] = func;
+            _functions[0] = new FunctionAlias(func);
             _timeline = new Timeline();
         }
 
@@ -37,42 +36,59 @@ namespace Aikom.FunctionalAnimation
         /// Generates a function that modulates a value with this data based on given input
         /// </summary>
         /// <returns></returns>
-        public Func<float, float> GetEvaluator()
+        //public Func<float, float> GetEvaluator()
+        //{
+        //    var funcs = new Func<float, float>[_functions.Length];
+        //    for (int i = 0; i < _functions.Length; i++)
+        //    {
+        //        var startingNode = _timeline.Nodes[i];
+        //        var endingNode = _timeline.Nodes[i + 1];
+        //        var baseFunc = EditorFunctions.Funcs[_functions[i]];
+        //        var endingValue = endingNode.y;
+        //        var startingValue = startingNode.y;
+        //        var amplitude = endingValue - startingValue;
+        //        var startingPoint = startingNode.x;
+        //        var endingPoint = endingNode.x;
+        //        var totalTime = 1 - (1 - endingPoint) - startingPoint;
+
+        //        Func<float, float> finalFunc = (t) =>
+        //        {
+        //            var time = (t - startingPoint) * (1 / totalTime);
+        //            return baseFunc(time) * amplitude + startingValue;
+        //        };
+
+        //        funcs[i] = finalFunc;
+        //    }
+
+        //    return (t) =>
+        //    {
+        //        float count = _functions.Length;
+        //        for (int i = 0; i < count; i++)
+        //        {
+        //            if (t >= _timeline.Nodes[i].x && t < _timeline.Nodes[i + 1].x)
+        //            {
+        //                return funcs[i](t);
+        //            }
+        //        }
+        //        return funcs[(int)count - 1](t);
+        //    };
+        //}
+
+        public float Evaluate(float time)
         {
-            var funcs = new Func<float, float>[_functions.Length];
-            for (int i = 0; i < _functions.Length; i++)
+            var count = _functions.Length;
+            for (int i = 0; i < count; i++)
             {
-                var startingNode = _timeline.Nodes[i];
-                var endingNode = _timeline.Nodes[i + 1];
-                var baseFunc = EditorFunctions.Funcs[_functions[i]];
-                var endingValue = endingNode.y;
-                var startingValue = startingNode.y;
-                var amplitude = endingValue - startingValue;
-                var startingPoint = startingNode.x;
-                var endingPoint = endingNode.x;
-                var totalTime = 1 - (1 - endingPoint) - startingPoint;
-
-                Func<float, float> finalFunc = (t) =>
+                var thisNode = _timeline.Nodes[i];
+                var nextNode = _timeline.Nodes[i + 1];
+                if (time >= thisNode.x && time < nextNode.x)
                 {
-                    var time = (t - startingPoint) * (1 / totalTime);
-                    return baseFunc(time) * amplitude + startingValue;
-                };
-
-                funcs[i] = finalFunc;
-            }
-
-            return (t) =>
-            {
-                float count = _functions.Length;
-                for (int i = 0; i < count; i++)
-                {
-                    if (t >= _timeline.Nodes[i].x && t < _timeline.Nodes[i + 1].x)
-                    {
-                        return funcs[i](t);
-                    }
+                    var rFunc = new RangedFunction(_functions[i], thisNode, nextNode);
+                    return rFunc.Evaluate(time);
                 }
-                return funcs[(int)count - 1](t);
-            };
+            }
+            var func = new RangedFunction(_functions[count - 1], _timeline.Nodes[count - 1], _timeline.Nodes[count]);
+            return func.Evaluate(time);
         }
 
         /// <summary>
@@ -98,7 +114,7 @@ namespace Aikom.FunctionalAnimation
             {
                 arr[i + startingIndex] = new RangedFunction 
                 {
-                    Pointer = EditorFunctions.Pointers[_functions[i]],
+                    Pointer = BurstFunctionCache.GetCachedPointer(_functions[i]),
                     Start = _timeline.Nodes[i],
                     End = _timeline.Nodes[i + 1]
                 };
@@ -110,9 +126,9 @@ namespace Aikom.FunctionalAnimation
         /// </summary>
         /// <param name="function"></param>
         /// <param name="pos"></param>
-        public void AddFunction(Function function, Vector2 pos)
+        public void AddFunction(FunctionAlias function, Vector2 pos)
         {
-            var newArray = new Function[_functions.Length + 1];
+            var newArray = new FunctionAlias[_functions.Length + 1];
             var timeline = _timeline;
 
             pos = new Vector2(Mathf.Clamp01(pos.x), Mathf.Clamp(pos.y, -1, 1));
@@ -154,7 +170,7 @@ namespace Aikom.FunctionalAnimation
                 Debug.LogWarning("Cannot remove the only function in the array");
                 return false;
             }
-            var newArray = new Function[_functions.Length - 1];
+            var newArray = new FunctionAlias[_functions.Length - 1];
             var timeline = _timeline;
 
             timeline.RemoveNode(index);
@@ -186,20 +202,15 @@ namespace Aikom.FunctionalAnimation
         /// </summary>
         /// <param name="index"></param>
         /// <param name="func"></param>
-        public void ChangeFunction(int index, Function func)
+        public void ChangeFunction(int index, FunctionAlias func)
         {
             _functions[index] = func;
-        }
-
-        public void Dispose()
-        {
-            GC.SuppressFinalize(this);
         }
 
         public object Clone()
         {
             var cloneGraph = new GraphData();
-            cloneGraph._functions = (Function[])_functions.Clone();
+            cloneGraph._functions = (FunctionAlias[])_functions.Clone();
             cloneGraph._timeline = new Timeline(Length + 1);
             for(int i = 0; i < _functions.Length + 1; ++i)
             {

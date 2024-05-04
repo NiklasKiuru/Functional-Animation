@@ -1,6 +1,7 @@
 using System;
 using System.Runtime.CompilerServices;
 using Unity.Collections.LowLevel.Unsafe;
+using Object = UnityEngine.Object;
 
 namespace Aikom.FunctionalAnimation
 {   
@@ -34,20 +35,24 @@ namespace Aikom.FunctionalAnimation
         /// <typeparam name="T"></typeparam>
         /// <param name="activeFlags"></param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Invoke<T>(in EventData<T> activeFlags) where T : struct
+        public bool Invoke<T>(in EventData<T> activeFlags) where T : struct
         {
+            var succes = true;
+
             if ((activeFlags.Flags & EventFlags.OnStart) == EventFlags.OnStart)
-                _onStart.InvokeAll(activeFlags.Value);
+                succes &= _onStart.InvokeAll(activeFlags.Value);
             if ((activeFlags.Flags & EventFlags.OnUpdate) == EventFlags.OnUpdate)
-                _onUpdate.InvokeAll(activeFlags.Value);
+                succes &= _onUpdate.InvokeAll(activeFlags.Value);
             if ((activeFlags.Flags & EventFlags.OnPause) == EventFlags.OnPause)
-                _onPause.InvokeAll(activeFlags.Value);
+                succes &= _onPause.InvokeAll(activeFlags.Value);
             if ((activeFlags.Flags & EventFlags.OnResume) == EventFlags.OnResume)
-                _onResume.InvokeAll(activeFlags.Value);
+                succes &= _onResume.InvokeAll(activeFlags.Value);
             if ((activeFlags.Flags & EventFlags.OnComplete) == EventFlags.OnComplete)
-                _onComplete.InvokeAll(activeFlags.Value);
+                succes &= _onComplete.InvokeAll(activeFlags.Value);
             if ((activeFlags.Flags & EventFlags.OnKill) == EventFlags.OnKill)
-                _onKill.InvokeAll(activeFlags.Value);
+                succes &= _onKill.InvokeAll(activeFlags.Value);
+
+            return succes;
         }
 
         /// <summary>
@@ -57,7 +62,7 @@ namespace Aikom.FunctionalAnimation
         /// <param name="cb"></param>
         /// <param name="target"></param>
         /// <param name="flag"></param>
-        public void Add<T>(Action<T> cb, object target, EventFlags flag) where T : struct
+        public void Add<T>(Action<T> cb, UnityEngine.Object target, EventFlags flag) where T : struct
         {
             switch(flag)
             {
@@ -107,14 +112,14 @@ namespace Aikom.FunctionalAnimation
         private class ActionContainer
         {
             public object[] Actions;
-            public object[] Targets;
+            public Object[] Targets;
 
             private int _count = 0;
 
             public ActionContainer()
             {
                 Actions = new object[4];
-                Targets = new object[4];
+                Targets = new Object[4];
             }
 
             /// <summary>
@@ -122,7 +127,7 @@ namespace Aikom.FunctionalAnimation
             /// </summary>
             /// <param name="action"></param>
             /// <param name="target"></param>
-            public void Add(object action, object target)
+            public void Add(object action, Object target)
             {
                 if(Actions.Length == _count)
                 {
@@ -140,15 +145,19 @@ namespace Aikom.FunctionalAnimation
             /// <typeparam name="T"></typeparam>
             /// <param name="value"></param>
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void InvokeAll<T>(T value) where T : struct
+            public bool InvokeAll<T>(T value) where T : struct
             {
+                var succes = true;
                 for(int i = 0; i < Actions.Length; i++)
                 {
                     if (i == _count)
-                        return;
+                        return succes;
                     if (Targets[i] != null)
                         UnsafeUtility.As<object, Action<T>>(ref Actions[i])?.Invoke(value);
+                    else
+                        succes = false;
                 }
+                return succes;
             }
 
             /// <summary>

@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -107,11 +108,11 @@ namespace Aikom.FunctionalAnimation.Editor
                 var menuRect = new Rect(menuPosition, Vector2.zero);
 
                 //Add functions to menu
-                var functionNames = (Function[])Enum.GetValues(typeof(Function));
-                for (int i = 0; i < functionNames.Length; i++)
+                var definitions = BurstFunctionCache.GetDefinitions().ToArray();
+                for (int i = 0; i < definitions.Length; i++)
                 {
-                    var func = functionNames[i];
-                    menu.AddItem(new GUIContent(func.ToString()), false, value => AddFunction((FunctionPosition)value), new FunctionPosition(menuPosition, func));
+                    var func = definitions[i];
+                    menu.AddItem(new GUIContent(func.Value), false, value => AddFunction((FunctionPosition)value), new FunctionPosition(menuPosition, func));
                 }
                 menu.DropDown(menuRect);
             }
@@ -122,9 +123,9 @@ namespace Aikom.FunctionalAnimation.Editor
         protected struct FunctionPosition
         {
             public Vector2 Position;
-            public Function Function;
+            public FunctionAlias Function;
 
-            public FunctionPosition(Vector2 position, Function function)
+            public FunctionPosition(Vector2 position, FunctionAlias function)
             {
                 Position = position;
                 Function = function;

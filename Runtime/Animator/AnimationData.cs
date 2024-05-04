@@ -135,7 +135,7 @@ namespace Aikom.FunctionalAnimation
         public Func<float, float> GenerateFunction(Axis axis)
         {
             var data = this[axis];
-            return data.GetEvaluator();
+            return (t) => data.Evaluate(t);
         }
 
         /// <summary>
@@ -144,7 +144,7 @@ namespace Aikom.FunctionalAnimation
         /// <param name="function"></param>
         /// <param name="axis"></param>
         /// <param name="pos"></param>
-        public void AddFunction(Function function, Axis axis, Vector2 pos)
+        public void AddFunction(FunctionAlias function, Axis axis, Vector2 pos)
         {
             var data = this[axis];
             data.AddFunction(function, pos);

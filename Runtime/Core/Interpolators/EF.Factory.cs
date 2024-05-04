@@ -279,7 +279,7 @@ namespace Aikom.FunctionalAnimation
         }
 
         /// <summary>
-        /// Creates a basic transition interpolator for 3D vector using ranged functions. Each axis will be calculated with the same easing function
+        /// Creates a basic transition interpolator for 4D vector using ranged functions. Each axis will be calculated with the same easing function
         /// </summary>
         /// <param name="from"></param>
         /// <param name="to"></param>
@@ -299,7 +299,7 @@ namespace Aikom.FunctionalAnimation
         }
 
         /// <summary>
-        /// Creates a basic transition interpolator for 3D vector using graph data. Each axis will be calculated with the same easing function
+        /// Creates a basic transition interpolator for 4D vector using graph data. Each axis will be calculated with the same easing function
         /// </summary>
         /// <param name="from"></param>
         /// <param name="to"></param>
@@ -320,7 +320,7 @@ namespace Aikom.FunctionalAnimation
 
 
         /// <summary>
-        /// Creates an axis controlled transition interpolator for a 3D vector.
+        /// Creates an axis controlled transition interpolator for a 4D vector.
         /// </summary>
         /// <param name="from"></param>
         /// <param name="to"></param>
@@ -356,7 +356,7 @@ namespace Aikom.FunctionalAnimation
         }
 
         /// <summary>
-        /// Creates an axis controlled transition interpolator for a 3D vector with one function for each axis.
+        /// Creates an axis controlled transition interpolator for a 4D vector with one function for each axis.
         /// </summary>
         /// <param name="from"></param>
         /// <param name="to"></param>
@@ -394,11 +394,10 @@ namespace Aikom.FunctionalAnimation
         /// <returns>Process id</returns>
         public static ProcessId CreateNonAlloc(float from, float to, float duration, Function func, TimeControl ctrl, int maxLoopCount)
         {
-            using var container = new FunctionContainer(1);
-            container.Set(0, 0, new RangedFunction(func));
+            Span<RangedFunction> funcSpan = stackalloc RangedFunction[1] { new RangedFunction(func) };
             var processor = CreateBasic(from, to, duration, ctrl);
             processor = (FloatInterpolator)processor.SetMaxLoopCount(maxLoopCount);
-            return EFAnimator.RegisterTargetNonAlloc<float, FloatInterpolator>(ref processor, container);
+            return EFAnimator.RegisterTargetNonAllocSpan<float, FloatInterpolator>(ref processor, funcSpan);
         }
 
         /// <summary>
@@ -413,8 +412,7 @@ namespace Aikom.FunctionalAnimation
         public static ProcessId CreateNonAlloc(float from, float to, float duration, Function func, TimeControl ctrl, int maxLoopCount, Action<float> onUpdate)
         {
             var proc = CreateNonAlloc(from, to, duration, func, ctrl, maxLoopCount);
-            EFAnimator.SetPassiveFlagsInternal(proc, EventFlags.OnUpdate);
-            CallbackRegistry.RegisterCallback(proc.Id, onUpdate, EventFlags.OnUpdate);
+            EFAnimator.RegisterStaticCallback(proc, onUpdate, EventFlags.OnUpdate);
             return proc;
         }
 
@@ -430,12 +428,12 @@ namespace Aikom.FunctionalAnimation
         /// <returns>Process id</returns>
         public static ProcessId CreateNonAlloc(float2 from, float2 to, float duration, Function func, TimeControl ctrl, int maxLoopCount)
         {
-            using var container = new FunctionContainer(2);
-            container.Set(0, 0, new RangedFunction(func));
-            container.Set(1, 0, new RangedFunction(func));
+            Span<RangedFunction> funcSpan = stackalloc RangedFunction[EFSettings.MaxFunctions + 1];
+            funcSpan[0] = new RangedFunction(func);
+            funcSpan[EFSettings.MaxFunctions] = new RangedFunction(func);
             var processor = CreateBasic(from, to, duration, ctrl, new int2(1,1), new bool2(true, true));
             processor = (Vector2Interpolator)processor.SetMaxLoopCount(maxLoopCount);
-            return EFAnimator.RegisterTargetNonAlloc<float2, Vector2Interpolator>(ref processor, container);
+            return EFAnimator.RegisterTargetNonAllocSpan<float2, Vector2Interpolator>(ref processor, funcSpan);
         }
 
         /// <summary>
@@ -450,8 +448,7 @@ namespace Aikom.FunctionalAnimation
         public static ProcessId CreateNonAlloc(float2 from, float2 to, float duration, Function func, TimeControl ctrl, int maxLoopCount, Action<float2> onUpdate)
         {
             var proc = CreateNonAlloc(from, to, duration, func, ctrl, maxLoopCount);
-            EFAnimator.SetPassiveFlagsInternal(proc, EventFlags.OnUpdate);
-            CallbackRegistry.RegisterCallback(proc.Id, onUpdate, EventFlags.OnUpdate);
+            EFAnimator.RegisterStaticCallback(proc, onUpdate, EventFlags.OnUpdate);
             return proc;
         }
 
@@ -467,13 +464,14 @@ namespace Aikom.FunctionalAnimation
         /// <returns>Process id</returns>
         public static ProcessId CreateNonAlloc(float3 from, float3 to, float duration, Function func, TimeControl ctrl, int maxLoopCount)
         {
-            using var container = new FunctionContainer(3);
-            container.Set(0, 0, new RangedFunction(func));
-            container.Set(1, 0, new RangedFunction(func));
-            container.Set(2, 0, new RangedFunction(func));
+            var funcStride = EFSettings.MaxFunctions;
+            Span<RangedFunction> container = stackalloc RangedFunction[2 * funcStride + 1];
+            container[0] = new RangedFunction(func);
+            container[funcStride] = new RangedFunction(func);
+            container[funcStride * 2] = new RangedFunction(func);
             var processor = CreateBasic(from, to, duration, ctrl, new int3(1, 1, 1), new bool3(true, true, true));
             processor = (Vector3Interpolator)processor.SetMaxLoopCount(maxLoopCount);
-            return EFAnimator.RegisterTargetNonAlloc<float3, Vector3Interpolator>(ref processor, container);
+            return EFAnimator.RegisterTargetNonAllocSpan<float3, Vector3Interpolator>(ref processor, container);
         }
 
         /// <summary>
@@ -488,8 +486,7 @@ namespace Aikom.FunctionalAnimation
         public static ProcessId CreateNonAlloc(float3 from, float3 to, float duration, Function func, TimeControl ctrl, int maxLoopCount, Action<float3> onUpdate)
         {
             var proc = CreateNonAlloc(from, to, duration, func, ctrl, maxLoopCount);
-            EFAnimator.SetPassiveFlagsInternal(proc, EventFlags.OnUpdate);
-            CallbackRegistry.RegisterCallback(proc.Id, onUpdate, EventFlags.OnUpdate);
+            EFAnimator.RegisterStaticCallback(proc, onUpdate, EventFlags.OnUpdate);
             return proc;
         }
 
@@ -506,14 +503,16 @@ namespace Aikom.FunctionalAnimation
         /// <returns>Process id</returns>
         public static ProcessId CreateNonAlloc(float4 from, float4 to, float duration, Function func, TimeControl ctrl, int maxLoopCount)
         {
-            using var container = new FunctionContainer(4);
-            container.Set(0, 0, new RangedFunction(func));
-            container.Set(1, 0, new RangedFunction(func));
-            container.Set(2, 0, new RangedFunction(func));
-            container.Set(3, 0, new RangedFunction(func));
+            var funcStride = EFSettings.MaxFunctions;
+            Span<RangedFunction> container = stackalloc RangedFunction[3 * funcStride + 1];
+            container[0] = new RangedFunction(func);
+            container[funcStride] = new RangedFunction(func);
+            container[funcStride * 2] = new RangedFunction(func);
+            container[funcStride * 3] = new RangedFunction(func);
+
             var processor = CreateBasic(from, to, duration, ctrl, new int4(1, 1, 1, 1), new bool4(true, true, true, true));
             processor = (Vector4Interpolator)processor.SetMaxLoopCount(maxLoopCount);
-            return EFAnimator.RegisterTargetNonAlloc<float4, Vector4Interpolator>(ref processor, container);
+            return EFAnimator.RegisterTargetNonAllocSpan<float4, Vector4Interpolator>(ref processor, container);
         }
 
         /// <summary>
@@ -528,8 +527,7 @@ namespace Aikom.FunctionalAnimation
         public static ProcessId CreateNonAlloc(float4 from, float4 to, float duration, Function func, TimeControl ctrl, int maxLoopCount, Action<float4> onUpdate)
         {
             var proc = CreateNonAlloc(from, to, duration, func, ctrl, maxLoopCount);
-            EFAnimator.SetPassiveFlagsInternal(proc, EventFlags.OnUpdate);
-            CallbackRegistry.RegisterCallback(proc.Id, onUpdate, EventFlags.OnUpdate);
+            EFAnimator.RegisterStaticCallback(proc, onUpdate, EventFlags.OnUpdate);
             return proc;
         }
 

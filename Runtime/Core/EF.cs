@@ -20,7 +20,7 @@ namespace Aikom.FunctionalAnimation
         public delegate float EasingFunctionDelegate(float x);
 
         [BurstCompile]
-        [EFuntion]
+        [EFunction]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float Linear(float x)
         {
@@ -28,6 +28,7 @@ namespace Aikom.FunctionalAnimation
         }
 
         [BurstCompile]
+        [EFunction]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float EaseInSine(float x)
         {
@@ -35,6 +36,7 @@ namespace Aikom.FunctionalAnimation
         }
 
         [BurstCompile]
+        [EFunction]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float EaseOutSine(float x)
         {
@@ -42,6 +44,7 @@ namespace Aikom.FunctionalAnimation
         }
 
         [BurstCompile]
+        [EFunction]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float EaseInOutSine(float x)
         {
@@ -49,6 +52,7 @@ namespace Aikom.FunctionalAnimation
         }
 
         [BurstCompile]
+        [EFunction]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float EaseInExp(float x)
         {
@@ -56,6 +60,7 @@ namespace Aikom.FunctionalAnimation
         }
 
         [BurstCompile]
+        [EFunction]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float EaseOutExp(float x)
         {
@@ -63,6 +68,7 @@ namespace Aikom.FunctionalAnimation
         }
 
         [BurstCompile]
+        [EFunction]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float EaseInOutExp(float x)
         {
@@ -73,6 +79,7 @@ namespace Aikom.FunctionalAnimation
         }
 
         [BurstCompile]
+        [EFunction]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float EaseInBounce(float x)
         {
@@ -80,6 +87,7 @@ namespace Aikom.FunctionalAnimation
         }
 
         [BurstCompile]
+        [EFunction]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float EaseOutBounce(float x)
         {
@@ -102,6 +110,7 @@ namespace Aikom.FunctionalAnimation
         }
 
         [BurstCompile]
+        [EFunction]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float EaseInOutBounce(float x)
         {
@@ -109,6 +118,7 @@ namespace Aikom.FunctionalAnimation
         }
 
         [BurstCompile]
+        [EFunction]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float EaseInElastic(float x)
         {
@@ -116,6 +126,7 @@ namespace Aikom.FunctionalAnimation
         }
 
         [BurstCompile]
+        [EFunction]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float EaseOutElastic(float x)
         {
@@ -123,6 +134,7 @@ namespace Aikom.FunctionalAnimation
         }
 
         [BurstCompile]
+        [EFunction]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float EaseInOutElastic(float x)
         {
@@ -131,6 +143,7 @@ namespace Aikom.FunctionalAnimation
         }
 
         [BurstCompile]
+        [EFunction]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float EaseInCirc(float x)
         {
@@ -138,6 +151,7 @@ namespace Aikom.FunctionalAnimation
         }
 
         [BurstCompile]
+        [EFunction]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float EaseOutCirc(float x)
         {
@@ -145,6 +159,7 @@ namespace Aikom.FunctionalAnimation
         }
 
         [BurstCompile]
+        [EFunction]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float EaseInOutCirc(float x)
         {
@@ -152,6 +167,7 @@ namespace Aikom.FunctionalAnimation
         }
 
         [BurstCompile]
+        [EFunction]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float EaseInBack(float x)
         {
@@ -159,6 +175,7 @@ namespace Aikom.FunctionalAnimation
         }
 
         [BurstCompile]
+        [EFunction]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float EaseOutBack(float x)
         {
@@ -166,6 +183,7 @@ namespace Aikom.FunctionalAnimation
         }
 
         [BurstCompile]
+        [EFunction]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float EaseInOutBack(float x)
         {
@@ -173,6 +191,7 @@ namespace Aikom.FunctionalAnimation
         }
 
         [BurstCompile]
+        [EFunction]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float FizzleIn(float x)
         {
@@ -180,6 +199,7 @@ namespace Aikom.FunctionalAnimation
         }
 
         [BurstCompile]
+        [EFunction]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float FizzleOut(float x)
         {
@@ -187,6 +207,7 @@ namespace Aikom.FunctionalAnimation
         }
 
         [BurstCompile]
+        [EFunction]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float FizzleInOut(float x)
         {
@@ -194,6 +215,7 @@ namespace Aikom.FunctionalAnimation
         }
 
         [BurstCompile]
+        [EFunction]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float FizzleOutIn(float x)
         {
@@ -204,25 +226,6 @@ namespace Aikom.FunctionalAnimation
         #endregion
 
         #region Utility
-
-        /// <summary>
-        /// Combines multiple easing functions into one
-        /// </summary>
-        /// <param name="functions">The execution order of the combined functions is dependent of the input order of this array</param>
-        /// <returns>If the output is used as a function in interpolation it should be noted that the time parameter in this function works as t/n where n is the amount of input functions</returns>
-        public static Func<float, float> Combine(params Function[] functions)
-        {
-            if (functions == null || functions.Length == 0)
-                throw new ArgumentException("The input array cannot be null and must contain atleast 1 member");
-
-            var funcs = new Func<float, float>[functions.Length];
-            for (int i = 0; i < functions.Length; i++)
-            {
-                funcs[i] = EditorFunctions.Funcs[functions[i]];
-            }
-
-            return Combine(funcs);
-        }
 
         /// <summary>
         /// Combines multiple easing functions into one
@@ -250,17 +253,6 @@ namespace Aikom.FunctionalAnimation
         }
 
         /// <summary>
-        /// Inverts a defined easing function and returns it as a function
-        /// </summary>
-        /// <param name="function"></param>
-        /// <returns></returns>
-        public static Func<float, float> Invert(Function function)
-        {
-            var func = EditorFunctions.Funcs[function];
-            return f => { return 1 - func.Invoke(f); };
-        }
-
-        /// <summary>
         /// Inverts a custom easing function and returns it as a function
         /// </summary>
         /// <param name="function"></param>
@@ -285,24 +277,7 @@ namespace Aikom.FunctionalAnimation
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float Interpolate(Function easing, float start, float end, float time)
         {
-            return start + (end - start) * EditorFunctions.Funcs[easing].Invoke(Mathf.Clamp01(time));
-        }
-
-        /// <summary>
-        /// Interpolates between start and end using a defined easing function and loops it if time threshold is above 1
-        /// </summary>
-        /// <param name="easing"></param>
-        /// <param name="start"></param>
-        /// <param name="end"></param>
-        /// <param name="time"></param>
-        /// <param name="loop"></param>
-        /// <returns></returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static float Interpolate(Function easing, float start, float end, ref float time, bool loop)
-        {
-            if (loop && time >= 1)
-                time = 0;
-            return Interpolate(easing, start, end, time);
+            return start + (end - start) * BurstFunctionCache.GetCachedPointer(easing).Invoke(Mathf.Clamp01(time));
         }
 
         /// <summary>
@@ -338,35 +313,6 @@ namespace Aikom.FunctionalAnimation
         }
 
         /// <summary>
-        /// Interpolates a color
-        /// </summary>
-        /// <param name="ease"></param>
-        /// <param name="start"></param>
-        /// <param name="end"></param>
-        /// <param name="time"></param>
-        /// <returns></returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static Color Interpolate(Function ease, Color start, Color end, float time)
-        {
-            var func = EditorFunctions.Funcs[ease];
-            return Interpolate(func, start, end, time);
-        }
-
-        /// <summary>
-        /// Interpolates a color's alpha value
-        /// </summary>
-        /// <param name="ease"></param>
-        /// <param name="start"></param>
-        /// <param name="end"></param>
-        /// <param name="time"></param>
-        /// <returns></returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static Color InterpolateAlpha(Function ease, Color start, Color end, float time)
-        {
-            return new Color(start.r, start.g, start.b, EF.Interpolate(ease, start.a, end.a, time));
-        }
-
-        /// <summary>
         /// Interpolates a color's alpha value
         /// </summary>
         /// <param name="ease"></param>
@@ -378,22 +324,6 @@ namespace Aikom.FunctionalAnimation
         public static Color InterpolateAlpha(Func<float, float> ease, Color start, Color end, float time)
         {
             return new Color(start.r, start.g, start.b, EF.Interpolate(ease, start.a, end.a, time));
-        }
-
-        /// <summary>
-        /// Interpolates a color by specified channels
-        /// </summary>
-        /// <param name="ease"></param>
-        /// <param name="start"></param>
-        /// <param name="end"></param>
-        /// <param name="channels">Defines the color channels used in interpolation. Axis value of 0 means no interpolation</param>
-        /// <param name="time"></param>
-        /// <returns></returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static Color InterpolateChannels(Function ease, Color start, Color end, bool4 channels, float time)
-        {
-            var func = EditorFunctions.Funcs[ease];
-            return InterpolateChannels(func, start, end, channels, time);
         }
 
         /// <summary>
@@ -433,21 +363,6 @@ namespace Aikom.FunctionalAnimation
         }
 
         /// <summary>
-        /// Interpolates a vector
-        /// </summary>
-        /// <param name="ease"></param>
-        /// <param name="start"></param>
-        /// <param name="end"></param>
-        /// <param name="time"></param>
-        /// <returns></returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static Vector3 Interpolate(Function ease, Vector3 start, Vector3 end, float time)
-        {
-            var func = EditorFunctions.Funcs[ease];
-            return Interpolate(func, start, end, time);
-        }
-
-        /// <summary>
         /// Interpolates a vector by specified axis
         /// </summary>
         /// <param name="ease"></param>
@@ -465,21 +380,6 @@ namespace Aikom.FunctionalAnimation
             return new Vector3(x, y, z);
         }
 
-        /// <summary>
-        /// Interpolates a vector by specified axis
-        /// </summary>
-        /// <param name="ease"></param>
-        /// <param name="start"></param>
-        /// <param name="end"></param>
-        /// <param name="axis"></param>
-        /// <param name="time"></param>
-        /// <returns></returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static Vector3 InterpolateAxis(Function ease, Vector3 start, Vector3 end, bool3 axis, float time)
-        {
-            var func = EditorFunctions.Funcs[ease];
-            return InterpolateAxis(func, start, end, axis, time);
-        }
 
         #endregion
     }

@@ -40,8 +40,7 @@ namespace Aikom.FunctionalAnimation.Editor
             int index = 0;
             foreach(var dataPoint in data.Functions)
             {
-                var selector = new GraphFunctionController<Axis>.FunctionSelectionField(index.ToString() + ".", dataPoint);
-                selector.Index = index;
+                var selector = new GraphFunctionController<Axis>.FunctionSelectionField(index.ToString() + ".", index, dataPoint);
                 selector.Parent = this;
                 selector.RegisterValueChangedCallback(ChangeFunction);
                 selector.OnFunctionRemovedInUI += Refresh;
@@ -49,10 +48,10 @@ namespace Aikom.FunctionalAnimation.Editor
                 index++;
             }
 
-            void ChangeFunction(ChangeEvent<Enum> evt)
+            void ChangeFunction(ChangeEvent<FunctionAlias> evt)
             {
                 var target = evt.target as GraphFunctionController<Axis>.FunctionSelectionField;
-                data.ChangeFunction(target.Index, (Function)evt.newValue);
+                data.ChangeFunction(target.Index, evt.newValue);
             }
             return element;
         }

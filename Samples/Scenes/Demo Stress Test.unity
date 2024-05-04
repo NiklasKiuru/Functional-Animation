@@ -235,10 +235,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _cubePrefab: {fileID: 2224417892967496647, guid: fd5f654f096dd7047b1ece1727a5f497, type: 3}
-  _count: 1000
+  _count: 10000
   _radius: 5
   _startPos: {x: 0, y: 0, z: 0}
-  _anim: {fileID: 11400000, guid: eafa1949d16056d46a2ab8cc2f829aa8, type: 2}
+  _anim: {fileID: 11400000, guid: dd0b7b7056240c245a3a2274d95dd4f7, type: 2}
 --- !u!1 &256331731
 GameObject:
   m_ObjectHideFlags: 0
@@ -625,9 +625,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5b5c38d3e6fb1fb46b4def6f515e3197, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _playOnAwake: 0
-  _playAwakeName: Cool Cube
+  _playOnAwake: 1
+  _playAwakeName: New Animation
   _animations:
-  - {fileID: 11400000, guid: eafa1949d16056d46a2ab8cc2f829aa8, type: 2}
+  - {fileID: 11400000, guid: dd0b7b7056240c245a3a2274d95dd4f7, type: 2}
   - {fileID: 0}
   - {fileID: 0}

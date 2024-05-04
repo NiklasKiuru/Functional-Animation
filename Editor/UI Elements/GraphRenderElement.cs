@@ -294,7 +294,7 @@ namespace Aikom.FunctionalAnimation.Editor
                     if (GraphData[i] == null)
                         continue;
                     SetColor(i);
-                    var func = GraphData[i].GetEvaluator();
+                    //var func = GraphData[i].GetEvaluator();
                     for (int sample = 0; sample < _sampleAmount; sample++)
                     {
                         DrawVertexSingle(sample);
@@ -304,7 +304,7 @@ namespace Aikom.FunctionalAnimation.Editor
                     Vector3 DrawVertexSingle(int index)
                     {
                         float x = index * _measurementInterval;
-                        return DrawVertex(x, func(x));
+                        return DrawVertex(x, GraphData[i].Evaluate(x));
                     }
                 }
             }
