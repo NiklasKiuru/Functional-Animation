@@ -154,20 +154,30 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _mainDoc: {fileID: 2041022063}
   _settings:
-  - Ease: 2
+  - Ease: 175291781
     Duration: 0.5
     Offset: {x: 20, y: 0, z: 0}
-  - Ease: 6
+  - Ease: 511600176
     Duration: 0.5
     Offset: {x: 20, y: -2, z: 0}
   _fizzleAmplitude: 20
   _test:
-    _functions: 0000000013000000
+    _functions:
+    - _value: Linear
+      _hash: 175291781
+    - _value: EaseInCirc
+      _hash: 571505190
+    - _value: Linear
+      _hash: 175291781
     _timeline:
       _nodes:
       - {x: 0, y: 0}
-      - {x: 0.083333336, y: 0}
-      - {x: 1, y: -1}
+      - {x: 0.4, y: 1}
+      - {x: 0.7, y: -1}
+      - {x: 1, y: 0}
+  _alias:
+    _value: Linear
+    _hash: 175291781
 --- !u!4 &757623647
 Transform:
   m_ObjectHideFlags: 0

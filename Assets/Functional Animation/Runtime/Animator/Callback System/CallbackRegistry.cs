@@ -10,7 +10,7 @@ namespace Aikom.FunctionalAnimation
         private static Stack<QuickActions> _stack = new Stack<QuickActions>();
 
         /// <summary>
-        /// Preallocates 
+        /// Preallocates the registry
         /// </summary>
         /// <param name="allocSize"></param>
         public static void Prime(int allocSize)
@@ -34,7 +34,7 @@ namespace Aikom.FunctionalAnimation
         /// <param name="flag"></param>
         public static void RegisterCallback<T, D>(int id, Action<T> callback, D owner, EventFlags flag)
             where T : struct
-            where D : class
+            where D : UnityEngine.Object
         {
             if (callback == null)
                 return;
@@ -61,31 +61,19 @@ namespace Aikom.FunctionalAnimation
         }
 
         /// <summary>
-        /// Way to register indefinete callbacks from static interface and struct calls
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="id"></param>
-        /// <param name="callback"></param>
-        /// <param name="flags"></param>
-        public static void RegisterCallback<T>(int id, Action<T> callback, EventFlags flags)
-            where T : struct
-        {   
-            // Pins the lifetime to this object
-            RegisterCallback(id, callback, _stack, flags);
-        }
-
-        /// <summary>
         /// Calls all valid flagged callbacks if there are active recievers
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="activeFlags"></param>
+        /// <returns>The succes of this operation</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void TryCall<T>(EventData<T> activeFlags) where T : struct
+        public static bool TryCall<T>(EventData<T> activeFlags) where T : struct
         {
             if (_callbacks.TryGetValue(activeFlags.Id, out var action))
             {
-                action.Invoke(activeFlags);
+                return action.Invoke(activeFlags);
             }
+            return false;
         }
 
         /// <summary>

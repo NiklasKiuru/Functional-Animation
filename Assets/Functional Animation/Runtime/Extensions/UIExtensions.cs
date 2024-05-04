@@ -110,7 +110,7 @@ namespace Aikom.FunctionalAnimation.Extensions
         {
             var currentPos = element.transform.matrix.GetPosition();
             var handle = EF.Create(currentPos, currentPos + offset, duration, func)
-                .OnUpdate(element, SetPosition)
+                .OnUpdate(SetPosition)
                 .Pause();
             // Entry
             element.RegisterCallback<T>((evt) =>
@@ -118,7 +118,7 @@ namespace Aikom.FunctionalAnimation.Extensions
                 if (handle.IsAlive)
                     handle.Resume();
                 else
-                    handle.Restart().OnUpdate(element, SetPosition);
+                    handle.Restart().OnUpdate(SetPosition);
             });
             // Exit
             element.RegisterCallback<D>((evt) =>

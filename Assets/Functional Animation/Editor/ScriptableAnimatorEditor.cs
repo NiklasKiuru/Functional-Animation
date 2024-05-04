@@ -21,9 +21,9 @@ namespace Aikom.FunctionalAnimation.Editor
             EditorGUILayout.PropertyField(_playOnAwake);
             if(_playOnAwake.boolValue)
                 EditorGUILayout.PropertyField(_playAwakeName);
-            
-            serializedObject.ApplyModifiedProperties();
+
             DrawPropertiesExcluding(serializedObject, "m_Script");
+            serializedObject.ApplyModifiedProperties();
         }
     }
 }

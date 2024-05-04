@@ -1,5 +1,6 @@
 #undef USE_INDEX_SAFEGUARDS
 
+using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using UnityEngine;
@@ -9,11 +10,6 @@ namespace Aikom.FunctionalAnimation
     /// <summary>
     /// Central controller for value interpolations and transform controls
     /// </summary>
-    /// <remarks>Note that all methods expecting a type of IInterpolator<T> are internal calls where the basetype must be known.
-    /// Since no basetypes are implicitly exposed to the user these calls should only be possible to do internally
-    /// This allows bypassing all process IsAlive checks for brute force control over the process
-    /// Due to these liberties all internal process modification calls must ensure Id validity with either
-    /// explicitly controlled lifetime settings or kill commands</remarks>
     public class EFAnimator : MonoBehaviour
     {
         private static EFAnimator _instance;
@@ -27,6 +23,13 @@ namespace Aikom.FunctionalAnimation
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void CreateInstance()
         {
+            if(_instance != null) 
+                return;
+
+            // Load runtime function cache
+            BurstFunctionCache.Load();
+            
+            // Create singleton
             var gameObject = new GameObject(nameof(EFAnimator));
             DontDestroyOnLoad(gameObject);
             _instance = gameObject.AddComponent<EFAnimator>();
@@ -41,7 +44,7 @@ namespace Aikom.FunctionalAnimation
         /// <typeparam name="D"></typeparam>
         /// <param name="processor"></param>
         /// <param name="funcs"></param>
-        /// <returns>A new <see cref="HandleTracker{T}"/> object. Allocates memory</returns>
+        /// <returns>A new <see cref="HandleTracker{T}"/> object</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static IInterpolatorHandle<T> RegisterTarget<T, D>(D processor, FunctionContainer cont)
             where T : unmanaged
@@ -96,7 +99,7 @@ namespace Aikom.FunctionalAnimation
         }
 
         /// <summary>
-        /// Registers a target internally with no new memory allocations. For this to be truly non alloc the container must be passed with a using statement
+        /// Registers a target internally with no new memory allocations
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <typeparam name="D"></typeparam>
@@ -114,17 +117,76 @@ namespace Aikom.FunctionalAnimation
                 processor.IsAlive = true;
                 group.Add(processor, cont);
                 _instance._activeNonAllocCount++;
-                CallbackRegistry.RegisterCallback<T>(processor.Id, (v) =>
-                {   
-                    _instance._activeNonAllocCount--;
-#if USE_INDEX_SAFEGUARDS
-                    _indexer.Return(processor.InternalId);
-#endif
-                }, EventFlags.OnKill);
-
+                CallbackRegistry.RegisterCallback<T, EFAnimator>(processor.Id, ReleaseCounter, _instance, EventFlags.OnKill);
                 return processor.GetIdentifier();
             }
             return new ProcessId(-1, -1);
+
+            static void ReleaseCounter(T val)
+            {
+                _instance._activeNonAllocCount--;
+#if USE_INDEX_SAFEGUARDS
+                _indexer.Return(processor.InternalId);
+#endif
+            }
+        }
+
+        internal static ProcessId RegisterTargetNonAllocSpan<T, D>(ref D processor, Span<RangedFunction> functions)
+            where T : unmanaged
+            where D : IInterpolator<T>
+        {
+            if (TryGetExplicitGroup<T, D>(processor.GetGroupId(), out var group))
+            {
+                processor.Id = _indexer.GetNewId();
+                processor.Status = ExecutionStatus.Running;
+                processor.IsAlive = true;
+                group.AddNonAlloc(processor, functions);
+                _instance._activeNonAllocCount++;
+                CallbackRegistry.RegisterCallback<T, EFAnimator>(processor.Id, ReleaseCounter, _instance, EventFlags.OnKill);
+                return processor.GetIdentifier();
+            }
+            return new ProcessId(-1, -1);
+
+            static void ReleaseCounter(T val)
+            {
+                _instance._activeNonAllocCount--;
+#if USE_INDEX_SAFEGUARDS
+                _indexer.Return(processor.InternalId);
+#endif
+            }
+        }
+
+        
+
+        internal static void RegisterStaticCallback<T>(IInterpolatorHandle<T> handle, Action<T> cb, EventFlags flags)
+            where T : unmanaged
+        {
+            if(TryGetValidGroup(handle, out var group))
+            {
+                group.SetPassiveFlags(handle.Id, flags);
+                CallbackRegistry.RegisterCallback(handle.Id, cb, _instance, flags);
+            }
+        }
+
+        internal static void RegisterStaticCallback<T>(ProcessId id, Action<T> cb, EventFlags flags)
+            where T : unmanaged
+        {
+            if (TryGetValidGroup(id.GroupId, out var group))
+            {
+                group.SetPassiveFlags(id.Id, flags);
+                CallbackRegistry.RegisterCallback(id.Id, cb, _instance, flags);
+            }
+        }
+
+        internal static void RegisterInstancedCallback<T, D>(IInterpolatorHandle<T> handle, D owner, Action<T> cb, EventFlags flags)
+            where T : unmanaged
+            where D : UnityEngine.Object
+        {
+            if (TryGetValidGroup(handle, out var group))
+            {
+                group.SetPassiveFlags(handle.Id, flags);
+                CallbackRegistry.RegisterCallback(handle.Id, cb, owner, flags);
+            }
         }
 
         /// <summary>
@@ -133,7 +195,7 @@ namespace Aikom.FunctionalAnimation
         /// <typeparam name="T"></typeparam>
         /// <param name="handle"></param>
         /// <param name="status"></param>
-        public static void ForceExecutionStatusExternal<T>(ref IInterpolatorHandle<T> handle, ExecutionStatus status)
+        public static void ForceExecutionStatusExternal<T>(IInterpolatorHandle<T> handle, ExecutionStatus status)
             where T : unmanaged
         {
             if(TryGetValidGroup(handle, out var group))
@@ -149,7 +211,7 @@ namespace Aikom.FunctionalAnimation
         /// <typeparam name="T"></typeparam>
         /// <param name="handle"></param>
         /// <param name="flag"></param>
-        public static void SetPassiveFlagsExternal<T>(ref IInterpolatorHandle<T> handle, EventFlags flag)
+        public static void SetPassiveFlagsExternal<T>(IInterpolatorHandle<T> handle, EventFlags flag)
             where T : unmanaged
         {
             if(TryGetValidGroup(handle, out var group))
@@ -177,7 +239,7 @@ namespace Aikom.FunctionalAnimation
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="handle"></param>
-        public static void KillTargetExternal<T>(ref IInterpolatorHandle<T> handle) where T : unmanaged
+        public static void KillTargetExternal<T>(IInterpolatorHandle<T> handle) where T : unmanaged
         {
             if (TryGetValidGroup(handle, out var group))
             {
@@ -231,7 +293,7 @@ namespace Aikom.FunctionalAnimation
         /// <typeparam name="T"></typeparam>
         /// <param name="handle"></param>
         /// <param name="count"></param>
-        public static void SetMaxLoopCountExternal<T>(ref IInterpolatorHandle<T> handle, int count)
+        public static void SetMaxLoopCountExternal<T>(IInterpolatorHandle<T> handle, int count)
             where T : unmanaged
         {
             if(TryGetValidGroup(handle, out var group))
@@ -284,6 +346,13 @@ namespace Aikom.FunctionalAnimation
         {   
             group = null;
             if (handle.IsAlive && _processGroups.TryGetValue(handle.GetGroupId(), out group))
+                return true;
+            return false;
+        }
+
+        private static bool TryGetValidGroup(int groupId, out IProcessGroupHandle<IGroupProcessor> group)
+        {
+            if (_processGroups.TryGetValue(groupId, out group))
                 return true;
             return false;
         }
@@ -412,9 +481,12 @@ namespace Aikom.FunctionalAnimation
                 }
                 _transformGroups.Clear();
             }
-            foreach(var group in _processGroups.Values)
+            if(_processGroups != null)
             {
-                group.Dispose();
+                foreach (var group in _processGroups.Values)
+                {
+                    group.Dispose();
+                }
             }
         }
 
@@ -440,9 +512,9 @@ namespace Aikom.FunctionalAnimation
             _processGroups.Add(float3Group.GroupId, float3Group);
             _processGroups.Add(float4Group.GroupId, float4Group);
 
-            // Circumvents JIT compiler from having to compile in runtime
+            // Circumvents JIT compiler from having to compile in editor runtime
             // This will prevent framedrops in first Add() or Remove() calls in process groups
-#if !UNITY_EDITOR
+#if UNITY_EDITOR
             foreach (var group in _processGroups.Values)
             {
                 group.PrecompileJobAssemblies();

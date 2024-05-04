@@ -19,7 +19,7 @@
 ## Installation
 Check [Releases](https://github.com/NiklasKiuru/Functional-Animation/releases) or use this link for most recent version in Unitys package manager.
 ```
-https://github.com/NiklasKiuru/Functional-Animation.git?path=/Assets/Functional%20Animation
+https://github.com/NiklasKiuru/Functional-Animation.git#upm
 ```
 
 ## Graph UI
@@ -143,16 +143,21 @@ To make it do something you have to define what should happen when the value upd
 ```cs
 float _myValue;
 
+// Can be used from anywhere
 EF.Create(from, to, duration, Function.EaseOut)
-	.OnUpdate(this, (v) => _myValue = v);
+	.OnUpdate((v) => _myValue = v);
+
+// Binds the lifetime of the process to the lifetime of a gameobject
+EF.Create(from, to, duration, Function.EaseOut)
+	.OnUpdate(gameObject, (v) => _myValue = v);
 
 ```
 
-The first parameter in OnUpdate is the object reference you want to tie the life time of the process to. For Unity objects this avoids scenarios where the object
+You can bind the lifetime of the process to any UnityEngine.Object. This avoids scenarios where the object
 has already been destroyed while the callback wants to set its parameters.
 Do NOT call `EF.Create()` or `OnUpdate` methods in unity's update cycle every frame. These methods are supposed to be used fire and forget style.
 
-Interpolators can be created by using either easing functions, ranged functions or graphs but under the hood all processes work with ranged functions.
+Interpolators can be created by using either function enum, ranged functions or graphs but under the hood all processes work with ranged functions.
 ```cs
 GraphData _customGraph;
 RangedFunction _customFunction;
@@ -205,7 +210,7 @@ The last example for avoiding locking the axis value is fine in most cases but t
 that handles transforms directly via Unitys `TransformAccesArray`.
 
 ### Controlling tweens
-Once the `EF.Create()` has been called it returns a process handle which is recommended to cache locally for possible future use and to avoid creating garbage.
+Once the `EF.Create()` has been called it returns a process handle which is recommended to cache locally for possible future use and to avoid memory allocations.
 With this handle you can access some process data, set event callbacks or control the process itself. The following example creates a process with a looping linear interpolation
 that sets the current position of the object between its current position and `_myVec`. If the process pauses it checks if the current X coordinate is not 0 and disables the gameObject.
 Finally everytime the process is resumed the object is enabled and the process is set to start from Pause state.
@@ -243,6 +248,7 @@ Available `IInterpolatorHandle<T>` extensions and properties:
 	- `OnComplete()`: Fired when the process has completed.
 	- `OnUpdate()`: Fired every time the value is recalculated (once per frame).
 	- `OnKill()`: Fired once on either forced or natural termination.
+	- `RegisterCallback()`: Register a single callback with multiple flags.
 
 * Get data
 	- `GetValue()`: Gets the current calculation value. It is recommended not to use this method frequently and to use `OnUpdate()` callback in frequent queries.
@@ -259,8 +265,7 @@ Interpolators can be created with three different time controls:
 | PingPong | Reverses the loop at each end point |
 
 If a process is meant to play only once the process group will automatically discard it once it completes.
-Currently the only way to guarantee the ending of a looping processes is to kill them manually with either `Kill()` or `Complete()` commands or by setting a max loop counter.
-In the future all Unity objects should automatically kill processes started from the object.
+The way to guarantee the ending of a looping processes is to kill them manually with either `Kill()` or `Complete()` commands, by setting a max loop counter or setting any callbacks with UnityEngine.Object parameters.
 
 ### Avoiding allocations
 In general interpolation processes avoid any unnecessary memory allocations and no allocations are made durning processing. However in order to track the entegrity of a newly created process handle and avoid possible Id mixups
@@ -269,10 +274,10 @@ each controllable handle has to be allocated on creation. The following examples
 // Cached private member variable
 IInterpolatorHandle<float> _processHandle;
 
-// Controllable handle. No allocations
+// Controllable handle. Is only needed to be allocated once
 _processHandle = EF.Create(from, to, duration, Function.EaseInExp);
 
-// Limited control handle that terminates after 2 loops. The proc id struct is so small it won't get heap allocated
+// Limited control handle. No heap allocations
 EF.CreateNonAlloc(from, to, duration, Function.EaseInExp, TimeControl.Loop, 2);
 
 ```
@@ -328,7 +333,7 @@ var newGraph = new GraphData(Function.EaseInExp);
 // Since there is only one function in the graph the second one is appended to the graph into second position
 // The first function defaults into starting from 0 and ending to 1 so the second appended function will start from 1
 // and end with the specified y-value of the given vector. 
-newGraph.AddFunction(Function.EaseOutExp, new Vector2(0,5f, 0));
+newGraph.AddFunction(new FunctionAlias(Function.Linear), new Vector2(0,5f, 0));
 
 // The value ranges used in graphs are [0, 1] for time (x) and [-1, 1] for values (y).
 // You can move individual nodes in the graph within these ranges freely and this function
@@ -340,9 +345,53 @@ newGraph.MoveTimelineNode(1, new Vector2(0.75f, -1));
 newGraph.RemoveFunction(1);
 
 // Evaluates the graph at position 0.5
-newGraph.GetEvaluator().Invoke(0.5f);
+newGraph.Evaluate(0.5f);
 
 // Gets the BurstCompatible function array buffer
 var arr = newGraph.GetRangedFunctionArray();
 
 ```
+
+###User defined functions
+You can define a new EF compatible function from anywhere in your project as long as it fulfills the following criteria:
+-	The function is type of EF.EasingFunctionDelegate
+- 	The function can be compiled into a FunctionPointer by burstcompiler
+-	The function has `EFunctionAttribute`
+
+Note that the function will only recieve input values between 0 and 1 and for graphable functions the output range should be between -1 and 1 at these end points.
+
+```cs
+// An example class containing a valid custom easing function
+[BurstCompile]
+public class MyClass{
+
+	[BurstCompile]
+	[EFunction("CustomFunction")]
+	public static float MyEase(float x){
+		return x * 2;
+	}
+}
+```
+
+EFuntionAttribute can take a string parameter in its constructor that essentially acts as a serializeable alias for the function. If no alias is provided, the name of the function is used instead. If there are two identically named functions in any containing types in the current assembly or a name of a function is contained in the `Function` enum it must impliment a new unique alias or else any attempts to use the function will fall back to a linear function. The alias is also the provided name for the function in all editor fields and the function will become usable in all graph editor windows.
+
+To select a user defined function in the editor you can do the following:
+```cs
+public class MyBehaviour : MonoBehaviour{
+
+	// Displays all package native and user defined function options in inspector in a drop down field
+	[SerializeField] private FunctionAlias _customAlias;
+	private IInterpolatorHandle<float> _processHandle;
+
+	public void StartProcess(){
+		_processHandle = EF.Create(0, 5, 2, new RangedFunction(_customAlias));
+	}
+
+	// You can also create a ranged function like this following the previous example of valid custom functions
+	public void StartProcess2(){
+		_processHandle = EF.Create(0, 5, 2, new RangedFunction(MyClass.MyEase));
+	}
+}
+```
+
+It is recommended to use custom functions with FunctionAlias since the editor only shows valid functions through it. Using delegates directly is only supported in runtime.

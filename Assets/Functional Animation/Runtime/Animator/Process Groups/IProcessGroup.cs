@@ -10,6 +10,7 @@ namespace Aikom.FunctionalAnimation
     {
         public int GroupId { get; }
         public void Add(D val, FunctionContainer cont);
+        public void AddNonAlloc(D val, Span<RangedFunction> funcs);
         public D GetValue(int id);
     }
 

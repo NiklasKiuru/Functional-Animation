@@ -61,8 +61,7 @@ namespace Aikom.FunctionalAnimation.Editor
             int index = 0;
             foreach (var dataPoint in GraphData.Functions)
             {
-                var subSelector = new GraphFunctionController<Axis>.FunctionSelectionField(index.ToString() + ".", dataPoint);
-                subSelector.Index = index;
+                var subSelector = new GraphFunctionController<Axis>.FunctionSelectionField(index.ToString() + ".", index, dataPoint);
                 subSelector.Parent = this;
                 subSelector.RegisterValueChangedCallback(ChangeFunction);
                 subSelector.OnFunctionRemovedInUI += OnRemove;
@@ -77,10 +76,10 @@ namespace Aikom.FunctionalAnimation.Editor
                 Refresh();
             }
 
-            void ChangeFunction(ChangeEvent<Enum> evt)
+            void ChangeFunction(ChangeEvent<FunctionAlias> evt)
             {
                 var target = evt.target as GraphFunctionController<Axis>.FunctionSelectionField;
-                GraphData.ChangeFunction(target.Index, (Function)evt.newValue);
+                GraphData.ChangeFunction(target.Index, evt.newValue);
                 ApplyModifications();
             }
         }
@@ -121,7 +120,8 @@ namespace Aikom.FunctionalAnimation.Editor
         protected override void OnDisable()
         {
             base.OnDisable();
-            _renderElement.OnGraphModified -= ApplyModifications;
+            if(_renderElement != null)
+                _renderElement.OnGraphModified -= ApplyModifications;
         }
 
         private void OnSelectionChange()

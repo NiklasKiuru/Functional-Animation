@@ -78,6 +78,43 @@ namespace Aikom.FunctionalAnimation
             AddEntry(processPos, val, cont);
         }
 
+        /// <summary>
+        /// Adds a new processor into the group
+        /// </summary>
+        /// <param name="val"></param>
+        /// <param name="funcs"></param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void AddNonAlloc(TBaseType val, Span<RangedFunction> cont)
+        {
+            // No array resizing needed
+            if (_addQue.TryDequeue(out var index))
+            {
+                AddEntryNonAlloc(index, val, cont);
+                return;
+            }
+
+            // Resize
+            var processPos = _processors.Length;
+            _processors.ResizeArray(processPos * 2);
+            _functions.ResizeArray(_functions.Length * 2);
+            _events.ResizeArray(_events.Length * 2);
+            AddEntryNonAlloc(processPos, val, cont);
+        }
+
+        private void AddEntryNonAlloc(int index, TBaseType val, Span<RangedFunction> cont)
+        {
+            _processors[index] = val;
+            var start = index * EFSettings.MaxFunctions * Dimension;
+            var end = start + cont.Length;
+            var contIndex = 0;
+            for (int i = start; i < end; i++)
+            {
+                _functions[i] = cont[contIndex];
+                contIndex++;
+            }
+            _lookup.Add(val.Id, index);
+        }
+
         private void AddEntry(int index, TBaseType val, FunctionContainer cont)
         {
             _processors[index] = val;
@@ -114,7 +151,10 @@ namespace Aikom.FunctionalAnimation
                     var proc = _processors[idIndexPair.Value];
                     var evt = _events[idIndexPair.Value];
                     if (evt.Id != -1)
-                        CallbackRegistry.TryCall(evt);
+                    {
+                        if (!CallbackRegistry.TryCall(evt) && proc.Status != ExecutionStatus.Completed)
+                            _removeQue.Enqueue(proc.Id);
+                    }
                     if (proc.Status == ExecutionStatus.Completed)
                     {
                         CallbackRegistry.UnregisterCallbacks(proc.Id);
@@ -233,12 +273,12 @@ namespace Aikom.FunctionalAnimation
             FunctionContainer tempFunc = new FunctionContainer(Dimension);
             tempFunc.Set(0, 0, new RangedFunction(Function.Linear));
             var handle = EFAnimator.RegisterTarget<TStruct, TBaseType>(temp, tempFunc);
-            handle.OnStart(this, (v) => LogCalls(handle, "OnStartInit: "))
-                .OnUpdate(this, (v) => LogCalls(handle, "OnUpdateInit: "))
-                .OnComplete(this, (v) => LogCalls(handle, "OnCompleteInit: "))
-                .OnPause(this, (v) => LogCalls(handle, "OnPauseInit: "))
-                .OnKill(this, (v) => LogCalls(handle, "OnKillInit: "))
-                .OnResume(this, (v) => LogCalls(handle, "OnResumeInit: "))
+            handle.OnStart((v) => LogCalls(handle, "OnStartInit: "))
+                .OnUpdate((v) => LogCalls(handle, "OnUpdateInit: "))
+                .OnComplete((v) => LogCalls(handle, "OnCompleteInit: "))
+                .OnPause((v) => LogCalls(handle, "OnPauseInit: "))
+                .OnKill((v) => LogCalls(handle, "OnKillInit: "))
+                .OnResume((v) => LogCalls(handle, "OnResumeInit: "))
                 .Pause()
                 .Resume();
             Process();

@@ -10,78 +10,85 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b1417811ba15d2346a8ec491a6fe7450, type: 3}
-  m_Name: Cool Cube
+  m_Name: New Animation
   m_EditorClassIdentifier: 
-  _duration: 4
+  _duration: 0
   _animationData:
   - X:
-      _functions: 020000000300000001000000
+      _functions:
+      - _value: EaseOutSine
+        _hash: 511600176
       _timeline:
         _nodes:
         - {x: 0, y: 0}
-        - {x: 0.25, y: 1}
-        - {x: 0.75, y: -1}
-        - {x: 1, y: 0}
+        - {x: 1, y: 1}
     Y:
-      _functions: 0300000003000000
+      _functions:
+      - _value: Linear
+        _hash: 175291781
       _timeline:
         _nodes:
-        - {x: 0, y: -1}
-        - {x: 0.5, y: 1}
-        - {x: 1, y: -1}
+        - {x: 0, y: 0}
+        - {x: 1, y: -0.3}
     Z:
-      _functions: 000000000000000000000000
+      _functions:
+      - _value: Linear
+        _hash: 175291781
       _timeline:
         _nodes:
         - {x: 0, y: 0}
-        - {x: 0.24976017, y: -1}
-        - {x: 0.7501247, y: 1}
-        - {x: 1, y: -0.000000018626451}
+        - {x: 1, y: 0.4}
     W:
-      _functions: 00000000
+      _functions:
+      - _value: Linear
+        _hash: 175291781
       _timeline:
         _nodes:
         - {x: 0, y: 0}
-        - {x: 1, y: 0.8738245}
+        - {x: 1, y: 1}
     Mode: 0
     Start: {x: 0, y: 0, z: 0}
     Target: {x: 0, y: 0, z: 0}
     Offset: {x: 5, y: 5, z: 5}
     Animate: 1
-    Sync: 1
     SeparateAxis: 1
-    Duration: 2
+    Duration: 3
     TimeControl: 0
     AnimateableAxis:
       x: 1
       y: 1
-      z: 0
+      z: 1
   - X:
-      _functions: 05000000000000000500000000000000
+      _functions:
+      - _value: FizzleIn
+        _hash: 964178591
+      - _value: EaseInExp
+        _hash: 2757546365
       _timeline:
         _nodes:
         - {x: 0, y: 0}
-        - {x: 0.25074446, y: 1}
         - {x: 0.5, y: 1}
-        - {x: 0.7500558, y: 0}
-        - {x: 1, y: 0}
+        - {x: 1, y: -0.6}
     Y:
-      _functions: 00000000050000000000000005000000
+      _functions:
+      - _value: Linear
+        _hash: 175291781
       _timeline:
         _nodes:
         - {x: 0, y: 0}
-        - {x: 0.2483835, y: 0.0021163907}
-        - {x: 0.49959126, y: 1}
-        - {x: 0.7500558, y: 1}
-        - {x: 1, y: 0}
+        - {x: 1, y: 0.7}
     Z:
-      _functions: 00000000
+      _functions:
+      - _value: Linear
+        _hash: 175291781
       _timeline:
         _nodes:
         - {x: 0, y: 0}
-        - {x: 1, y: 1}
+        - {x: 1, y: 0.8}
     W:
-      _functions: 00000000
+      _functions:
+      - _value: Linear
+        _hash: 175291781
       _timeline:
         _nodes:
         - {x: 0, y: 0}
@@ -89,36 +96,43 @@ MonoBehaviour:
     Mode: 0
     Start: {x: 0, y: 0, z: 0}
     Target: {x: 0, y: 0, z: 0}
-    Offset: {x: 90, y: 90, z: 180}
+    Offset: {x: 90, y: 0, z: 0}
     Animate: 1
-    Sync: 1
     SeparateAxis: 1
     Duration: 2
     TimeControl: 0
     AnimateableAxis:
       x: 1
       y: 1
-      z: 0
+      z: 1
   - X:
-      _functions: 00000000
+      _functions:
+      - _value: Linear
+        _hash: 175291781
       _timeline:
         _nodes:
         - {x: 0, y: 0}
         - {x: 1, y: 1}
     Y:
-      _functions: 00000000
+      _functions:
+      - _value: Linear
+        _hash: 175291781
       _timeline:
         _nodes:
         - {x: 0, y: 0}
         - {x: 1, y: 1}
     Z:
-      _functions: 00000000
+      _functions:
+      - _value: Linear
+        _hash: 175291781
       _timeline:
         _nodes:
         - {x: 0, y: 0}
         - {x: 1, y: 1}
     W:
-      _functions: 00000000
+      _functions:
+      - _value: Linear
+        _hash: 175291781
       _timeline:
         _nodes:
         - {x: 0, y: 0}
@@ -128,7 +142,6 @@ MonoBehaviour:
     Target: {x: 0, y: 0, z: 0}
     Offset: {x: 0, y: 0, z: 0}
     Animate: 0
-    Sync: 0
     SeparateAxis: 1
     Duration: 0
     TimeControl: 0

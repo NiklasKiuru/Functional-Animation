@@ -60,7 +60,7 @@ namespace Aikom.FunctionalAnimation.Editor
             for (int i = 0; i < fieldStructure.Length - 1; i++)
             {
                 obj = GetFieldOrPropertyValue<object>(fieldStructure[i], obj);
-}
+            }
             string fieldName = fieldStructure.Last();
 
             return SetFieldOrPropertyValue(fieldName, obj, value);
