@@ -83,6 +83,11 @@ namespace Aikom.FunctionalAnimation
         }
 
         /// <summary>
+        /// Inverts the direction of time
+        /// </summary>
+        public void InvertDirection() => _direction *= -1;
+
+        /// <summary>
         /// Resets the clock
         /// </summary>
         public void Reset()
@@ -128,10 +133,14 @@ namespace Aikom.FunctionalAnimation
             return _time;
         }
 
-
+        /// <summary>
+        /// Returns the completion status of this timer
+        /// </summary>
+        /// <returns></returns>
         public bool CheckCompletion()
         {
-            return (_timeControl == TimeControl.PlayOnce && _time >= 1) || _maxLoopCount - _currentLoop == 0;
+            return (_timeControl == TimeControl.PlayOnce && (_time >= 1 && _direction == 1 || _time == 0 && _direction == -1)) 
+                || _maxLoopCount - _currentLoop == 0;
         }
     }
 }
