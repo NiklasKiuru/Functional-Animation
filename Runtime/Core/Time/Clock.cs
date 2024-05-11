@@ -12,6 +12,7 @@ namespace Aikom.FunctionalAnimation
         private TimeControl _timeControl;
         private int _currentLoop;
         private int _maxLoopCount;
+        private bool _isCompleted;
 
         /// <summary>
         /// Current linear time [0, 1]
@@ -53,6 +54,11 @@ namespace Aikom.FunctionalAnimation
         /// </summary>
         public int CurrentLoop { get => _currentLoop; }
 
+        /// <summary>
+        /// Flag for completion status
+        /// </summary>
+        public bool IsCompleted { get => _isCompleted; }
+
         public Clock(float speed, TimeControl ctrl = TimeControl.PlayOnce)
         {
             if (speed == float.PositiveInfinity)
@@ -63,6 +69,7 @@ namespace Aikom.FunctionalAnimation
             _timeControl = ctrl;
             _currentLoop = 0;
             _maxLoopCount = -1;
+            _isCompleted = false;
         }
 
         /// <summary>
@@ -100,6 +107,7 @@ namespace Aikom.FunctionalAnimation
         private float Forward()
         {   
             _time = Mathf.Clamp01(_time);
+            _isCompleted = CheckCompletion();
             return _time;
         }
 
@@ -108,8 +116,11 @@ namespace Aikom.FunctionalAnimation
             if (_time >= 1)
             {
                 _direction = -1;
-                _time = 1 - (1 - _time);
+                _time = 1 - Mathf.Abs(1 - _time);
                 _currentLoop++;
+                _isCompleted = CheckCompletion();
+                if (_isCompleted)
+                    _time = 1;
             }
                 
             else if (_time <= 0)
@@ -117,6 +128,9 @@ namespace Aikom.FunctionalAnimation
                 _direction = 1;
                 _time = Mathf.Abs(_time);
                 _currentLoop++;
+                _isCompleted = CheckCompletion();
+                if(_isCompleted)
+                    _time = 0;
             }
                 
             return _time;
@@ -128,8 +142,10 @@ namespace Aikom.FunctionalAnimation
             {
                 _time = 1 - _time;
                 _currentLoop++;
+                _isCompleted = CheckCompletion();
+                if (_isCompleted)
+                    _time = 1;
             }
-               
             return _time;
         }
 
@@ -137,7 +153,7 @@ namespace Aikom.FunctionalAnimation
         /// Returns the completion status of this timer
         /// </summary>
         /// <returns></returns>
-        public bool CheckCompletion()
+        private bool CheckCompletion()
         {
             return (_timeControl == TimeControl.PlayOnce && (_time >= 1 && _direction == 1 || _time == 0 && _direction == -1)) 
                 || _maxLoopCount - _currentLoop == 0;

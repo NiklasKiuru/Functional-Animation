@@ -88,5 +88,17 @@ namespace Aikom.FunctionalAnimation.Tests
             Assert.AreEqual(0f, val);
         }
 
+        [Test]
+        public void FlipValues_Test()
+        {
+            var from = 0;
+            var to = 1;
+            var handle = EF.Create(from, to, 1, Function.Linear)
+                .FlipValues();
+            EFAnimator.TryGetProcessor<float, FloatInterpolator>(handle.GetIdentifier(), out var proc);
+            Assert.AreEqual(from, proc.To);
+            Assert.AreEqual(to, proc.From);
+        }
+
     }
 }

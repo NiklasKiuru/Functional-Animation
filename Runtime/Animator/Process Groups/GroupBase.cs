@@ -304,6 +304,16 @@ namespace Aikom.FunctionalAnimation
             }
         }
 
+        public void FlipValues(int id)
+        {
+            if (_lookup.TryGetValue(id, out var index))
+            {
+                var processor = _processors[index];
+                processor = (TBaseType)processor.FlipValues();
+                _processors[index] = processor;
+            }
+        }
+
         public void SetMaxLoopCount(int id, int count)
         {
             if (_lookup.TryGetValue(id, out var index))
@@ -409,7 +419,7 @@ namespace Aikom.FunctionalAnimation
                         }
 
                     }
-                    if (dataPoint.Clock.CheckCompletion()) 
+                    if (dataPoint.Clock.IsCompleted) 
                         dataPoint.Status = ExecutionStatus.Completed;
 
                     // Complete cb check

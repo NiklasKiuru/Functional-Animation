@@ -104,6 +104,18 @@ namespace Aikom.FunctionalAnimation
         }
 
         /// <summary>
+        /// Flips the values of interpolation process
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="handle"></param>
+        /// <returns></returns>
+        public static IInterpolatorHandle<T> FlipValues<T>(this IInterpolatorHandle<T> handle) where T : unmanaged
+        {
+            EFAnimator.FlipValues(handle);
+            return handle;
+        }
+
+        /// <summary>
         /// Sets the current process as inactive for the given delay and continues after the delay has passed.
         /// Does not call OnPause or OnResume
         /// </summary>
