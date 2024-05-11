@@ -156,6 +156,15 @@ namespace Aikom.FunctionalAnimation
             }
         }
 
+        internal static void FlipValues<T>(IInterpolatorHandle<T> handle)
+            where T : unmanaged
+        {
+            if (TryGetValidGroup(handle, out var group))
+            {
+                group.FlipValues(handle.Id);
+            }
+        }
+
         internal static void InvertProcess<T>(IInterpolatorHandle<T> handle) 
             where T : unmanaged
         {

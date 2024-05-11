@@ -6,8 +6,8 @@ namespace Aikom.FunctionalAnimation
         public EventFlags PassiveFlags { get; set; }
         public ExecutionStatus Status { get; set; }
         public T Current { get; set; }
-        public T From { get; }
-        public T To { get; }
+        public T From { get; set; }
+        public T To { get; set; }
         public int AxisCount { get; }
         public Clock Clock { get; set; }
         public void SetValue(int index, float value);
@@ -58,6 +58,21 @@ namespace Aikom.FunctionalAnimation
         public static ProcessId GetIdentifier<T>(this IInterpolator<T> handle) where T : unmanaged
         {
             return handle.GetIdentifier();
+        }
+
+        /// <summary>
+        /// Flips the from and to values of the interpolator
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="handle"></param>
+        /// <returns></returns>
+        public static IInterpolator<T> FlipValues<T>(this IInterpolator<T> handle) where T : unmanaged
+        {
+            var from = handle.From;
+            var to = handle.To;
+            handle.From = to;
+            handle.To = from;
+            return handle;
         }
     }
 }

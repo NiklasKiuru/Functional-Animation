@@ -240,6 +240,8 @@ Available `IInterpolatorHandle<T>` extensions and properties:
 	- `Hibernate()`: Inactivates the process for a set period of time. Can be used to add delay to the initial start or just to set the process on hold.
 	Does not fire `OnPause()` or `OnResume()` callbacks. The only way to continue execution is to wait for the delay. (Currently minor bug with Resume).
 	- `SetLoopLimit()`: Set max loop count to terminate process after.
+	- `Invert()`: Inverts the direction of time used in the process.
+	- `FlipValues()`: Flips the assigned `From` and `To` values.
 
 * Set callbacks
 	- `OnStart()`: Fires when the process initially starts. (Currently after the first execution cycle. Might change this in the future).

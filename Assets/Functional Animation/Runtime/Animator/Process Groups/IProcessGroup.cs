@@ -28,6 +28,7 @@ namespace Aikom.FunctionalAnimation
         public void RestartProcess(int id);
         public void SetMaxLoopCount(int id, int count);
         public void InvertProcess(int id);
+        public void FlipValues(int id);
     }
 }
 
