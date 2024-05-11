@@ -1,7 +1,7 @@
 {
     "name": "com.aikom.functionalanimation",
     "displayName": "Functional Animation",
-    "version": "1.0.0",
+    "version": "1.1.2",
     "unity": "2021.3",
     "description": "Simple function based animation system with graph interface and general tweening engine",
     "documentationUrl": "https://github.com/NiklasKiuru/Functional-Animation/blob/main/README.md",
