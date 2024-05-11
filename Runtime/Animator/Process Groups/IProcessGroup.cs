@@ -27,6 +27,7 @@ namespace Aikom.FunctionalAnimation
         public void PrecompileJobAssemblies();
         public void RestartProcess(int id);
         public void SetMaxLoopCount(int id, int count);
+        public void InvertProcess(int id);
     }
 }
 

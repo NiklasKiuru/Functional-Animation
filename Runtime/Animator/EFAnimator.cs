@@ -156,7 +156,14 @@ namespace Aikom.FunctionalAnimation
             }
         }
 
-        
+        internal static void InvertProcess<T>(IInterpolatorHandle<T> handle) 
+            where T : unmanaged
+        {
+            if(TryGetValidGroup(handle, out var group))
+            {
+                group.InvertProcess(handle.Id);
+            }
+        }
 
         internal static void RegisterStaticCallback<T>(IInterpolatorHandle<T> handle, Action<T> cb, EventFlags flags)
             where T : unmanaged

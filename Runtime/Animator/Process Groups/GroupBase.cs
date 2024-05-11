@@ -325,6 +325,18 @@ namespace Aikom.FunctionalAnimation
             }
         }
 
+        public void InvertProcess(int id)
+        {
+            if( _lookup.TryGetValue(id,out var index))
+            {
+                var processor = _processors[index];
+                var clock = processor.Clock;
+                clock.InvertDirection();
+                processor.Clock = clock;
+                _processors[index] = processor;
+            }
+        }
+
         [BurstCompile]
         public struct RemoveJob : IJob
         {

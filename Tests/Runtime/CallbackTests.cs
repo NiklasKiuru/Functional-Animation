@@ -65,7 +65,6 @@ namespace Aikom.FunctionalAnimation.Tests
         public IEnumerator Kill_Test()
         {   
             var hasCompleted = false;
-            var hasDied = false;
             var handle = EF.Create(0, 1, 2, Function.Linear)
                 .OnComplete((V) => hasCompleted = true);
             var go = new GameObject();
@@ -74,6 +73,19 @@ namespace Aikom.FunctionalAnimation.Tests
             yield return new WaitForSeconds(1);
             handle.Kill();
             Assert.IsFalse(hasCompleted);
+        }
+
+        [UnityTest]
+        public IEnumerator Inversion_Test()
+        {
+            var val = 0f;
+            var handle = EF.Create(0, 2, 2, Function.Linear)
+                .OnUpdate((v) => val = v);
+            yield return new WaitForSeconds(1);
+            Assert.IsTrue(val > 0.5f);
+            handle.Invert();
+            yield return new WaitForSeconds(1.1f);
+            Assert.AreEqual(0f, val);
         }
 
     }

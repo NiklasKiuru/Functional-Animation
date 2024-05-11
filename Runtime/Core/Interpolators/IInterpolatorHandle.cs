@@ -92,6 +92,18 @@ namespace Aikom.FunctionalAnimation
         }
 
         /// <summary>
+        /// Inverts the direction of the current process
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="handle"></param>
+        /// <returns></returns>
+        public static IInterpolatorHandle<T> Invert<T>(this IInterpolatorHandle<T> handle) where T : unmanaged
+        {
+            EFAnimator.InvertProcess(handle);
+            return handle;
+        }
+
+        /// <summary>
         /// Sets the current process as inactive for the given delay and continues after the delay has passed.
         /// Does not call OnPause or OnResume
         /// </summary>
