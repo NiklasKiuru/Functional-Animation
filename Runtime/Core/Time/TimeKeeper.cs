@@ -52,6 +52,8 @@ namespace Aikom.FunctionalAnimation
         /// </summary>
         public int Direction { get => _direction; }
 
+        public event Action OnLoopCompleted;
+
         public TimeKeeper(float speed, TimeControl ctrl = TimeControl.PlayOnce)
         {
             if (speed == float.PositiveInfinity)
@@ -129,23 +131,41 @@ namespace Aikom.FunctionalAnimation
         {
             _time += _speed * delta * _direction;
             _time = Mathf.Clamp01(_time);
+            if(_time == 1 || _time == 0)
+                OnLoopCompleted?.Invoke();
             return _time;
         }
 
         private float PingPong(float delta)
         {
+            _time += _speed * delta * _direction;
             if (_time >= 1)
+            {
                 _direction = -1;
+                _time = 1 - Mathf.Abs(1 - _time);
+                OnLoopCompleted?.Invoke();
+            }
+
             else if (_time <= 0)
+            {
                 _direction = 1;
-            return Forward(delta);
+                _time = Mathf.Abs(_time);
+                OnLoopCompleted?.Invoke();
+            }
+
+            return _time;
         }
 
         private float Loop(float delta)
         {
+            _time += _speed * delta * _direction;
             if (_time >= 1)
-                _time = 0;
-            return Forward(delta);
+            {
+                _time = Mathf.Abs(1 - _time);
+                OnLoopCompleted?.Invoke();
+            }
+                
+            return _time;
         }
     }
 }
