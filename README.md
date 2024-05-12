@@ -250,6 +250,7 @@ Available `IInterpolatorHandle<T>` extensions and properties:
 	- `OnComplete()`: Fired when the process has completed.
 	- `OnUpdate()`: Fired every time the value is recalculated (once per frame).
 	- `OnKill()`: Fired once on either forced or natural termination.
+	- `OnLoopCompleted`: Fired once a looping end point has been reached. For normal loops the time threshold is 1 and for pingpong it is 1 and 0. Note that on ping pong loops the first callback is only called on end point 1, not on initial starting value.
 	- `RegisterCallback()`: Register a single callback with multiple flags.
 
 * Get data

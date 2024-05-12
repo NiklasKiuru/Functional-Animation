@@ -100,5 +100,18 @@ namespace Aikom.FunctionalAnimation.Tests
             Assert.AreEqual(to, proc.From);
         }
 
+        [UnityTest]
+        public IEnumerator Loop_Test()
+        {
+            var loopCompleted = false;
+            var handle = EF.Create(0, 1, 1, Function.Linear, TimeControl.Loop)
+                .OnLoopCompleted((v) => loopCompleted = true);
+            yield return new WaitForSeconds(1.1f);
+            EFAnimator.TryGetProcessor<float, FloatInterpolator>(handle.GetIdentifier(), out var process);
+            Assert.IsTrue((process.PassiveFlags & EventFlags.OnLoopCompleted) == EventFlags.OnLoopCompleted);
+            Assert.IsTrue(loopCompleted);
+            handle.Kill();
+        }
+
     }
 }

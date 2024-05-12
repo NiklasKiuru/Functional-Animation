@@ -329,6 +329,30 @@ namespace Aikom.FunctionalAnimation
             EFAnimator.SetMaxLoopCountExternal(handle, count);
             return handle;
         }
+
+        /// <summary>
+        /// Called once a loop has been completed
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="handle"></param>
+        /// <param name="cb"></param>
+        /// <returns></returns>
+        public static IInterpolatorHandle<T> OnLoopCompleted<T>(this IInterpolatorHandle<T> handle, Action<T> cb)
+            where T : unmanaged
+            => RegisterCallback(handle, cb, EventFlags.OnLoopCompleted);
+
+        /// <summary>
+        /// Called once a loop has been completed
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="handle"></param>
+        /// <param name="cb"></param>
+        /// <returns></returns>
+        public static IInterpolatorHandle<T> OnLoopCompleted<T, D>(this IInterpolatorHandle<T> handle, D owner, Action<T> cb)
+            where T : unmanaged
+            where D : UnityEngine.Object
+            => RegisterCallback(handle, owner, cb, EventFlags.OnLoopCompleted);
+
     }
 }
 
@@ -343,6 +367,7 @@ public enum EventFlags : ushort
     OnResume = 8,
     OnKill = 16,
     OnUpdate = 32,
+    OnLoopCompleted = 64
 }
 
 

@@ -16,6 +16,7 @@ namespace Aikom.FunctionalAnimation
         private ActionContainer _onKill;
         private ActionContainer _onResume;
         private ActionContainer _onPause;
+        private ActionContainer _onLoopCompleted;
 
         private int _totalCount = 0;
 
@@ -27,6 +28,7 @@ namespace Aikom.FunctionalAnimation
             _onKill = new ActionContainer();
             _onResume = new ActionContainer();
             _onPause = new ActionContainer();
+            _onLoopCompleted = new ActionContainer();
         }
 
         /// <summary>
@@ -51,6 +53,8 @@ namespace Aikom.FunctionalAnimation
                 succes &= _onComplete.InvokeAll(activeFlags.Value);
             if ((activeFlags.Flags & EventFlags.OnKill) == EventFlags.OnKill)
                 succes &= _onKill.InvokeAll(activeFlags.Value);
+            if((activeFlags.Flags & EventFlags.OnLoopCompleted) == EventFlags.OnLoopCompleted)
+                succes &= _onLoopCompleted.InvokeAll(activeFlags.Value);
 
             return succes;
         }
@@ -86,6 +90,9 @@ namespace Aikom.FunctionalAnimation
                 case EventFlags.OnUpdate: 
                     _onUpdate.Add(cb, target);
                     break;
+                case EventFlags.OnLoopCompleted:
+                    _onLoopCompleted.Add(cb, target);
+                    break;
             }
             _totalCount++;
         }
@@ -103,6 +110,7 @@ namespace Aikom.FunctionalAnimation
             _onResume.Clear();
             _onKill.Clear();
             _onUpdate.Clear();
+            _onLoopCompleted.Clear();
             _totalCount = 0;
         }
 

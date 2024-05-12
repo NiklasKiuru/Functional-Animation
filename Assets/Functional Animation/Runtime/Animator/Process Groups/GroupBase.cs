@@ -152,8 +152,8 @@ namespace Aikom.FunctionalAnimation
                     var evt = _events[idIndexPair.Value];
                     if (evt.Id != -1)
                     {
-                        if (!CallbackRegistry.TryCall(evt) && proc.Status != ExecutionStatus.Completed)
-                            _removeQue.Enqueue(proc.Id);
+                        if (!CallbackRegistry.TryCall(evt))
+                            proc.Status = ExecutionStatus.Completed;
                     }
                     if (proc.Status == ExecutionStatus.Completed)
                     {
@@ -395,6 +395,7 @@ namespace Aikom.FunctionalAnimation
                     if (dataPoint.Clock.Time == 0 && (dataPoint.PassiveFlags & EventFlags.OnStart) == EventFlags.OnStart)
                         dataPoint.ActiveFlags |= EventFlags.OnStart;
                     var clock = dataPoint.Clock;
+                    var currentLoop = clock.CurrentLoop;
                     var time = clock.Tick(Delta);
                     dataPoint.Clock = clock;
                     for (int axis = 0; axis < dataPoint.AxisCount; axis++)
@@ -419,6 +420,12 @@ namespace Aikom.FunctionalAnimation
                         }
 
                     }
+                    if(currentLoop < dataPoint.Clock.CurrentLoop)
+                    {
+                        if ((dataPoint.PassiveFlags & EventFlags.OnLoopCompleted) == EventFlags.OnLoopCompleted)
+                            dataPoint.ActiveFlags |= EventFlags.OnLoopCompleted;
+                    }
+
                     if (dataPoint.Clock.IsCompleted) 
                         dataPoint.Status = ExecutionStatus.Completed;
 
