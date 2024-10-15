@@ -1,12 +1,13 @@
 #define USE_LOGS
 
+using Codice.Client.Common.Tree;
+using log4net.Config;
 using System;
 using System.Runtime.CompilerServices;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
 using UnityEngine;
-using Aikom.FunctionalAnimation.Extensions;
 
 namespace Aikom.FunctionalAnimation
 {   
@@ -15,37 +16,54 @@ namespace Aikom.FunctionalAnimation
     /// </summary>
     /// <typeparam name="TStruct"></typeparam>
     /// <typeparam name="TBaseType"></typeparam>
-    public abstract class GroupBase<TStruct, TBaseType> : IProcessGroup<TBaseType>
+    public abstract class GroupBase<TStruct, TBaseType> : IProcessGroup<TStruct, TBaseType>
     where TStruct : unmanaged
     where TBaseType : unmanaged, IInterpolator<TStruct>
     {
         protected NativeArray<TBaseType> _processors;
-        protected NativeArray<RangedFunction> _functions;
         protected NativeArray<EventData<TStruct>> _events;
         protected NativeHashMap<int, int> _lookup;
         protected NativeQueue<int> _removeQue;
-        protected bool _isActive;
         protected RemoveJob _batchRemover;
         protected NativeQueue<int> _addQue;
-        private ProcessFloats _processJob;
+
+        private InterpolationJob _processJob;
+        private NativeArray<NativeFunctionGraph> _graphHeap;
+        private bool _isActive;
+
+        protected delegate void InterpolationDelegate(in TBaseType processor, in NativeFunctionGraph graph, ref ValueVector<TStruct> val, ref ExecutionContext ctx);
+
+        private readonly static FunctionPointer<InterpolationDelegate> s_mainFallback = BurstCompiler.CompileFunctionPointer<InterpolationDelegate>(MainFallback);
+        private int _groupId;
 
         /// <summary>
-        /// Group identfier
+        /// Is the processor type storing multiple graphs in a single native function graph?
         /// </summary>
-        public abstract int GroupId { get; }
+        protected virtual bool IsMultiGraphTarget => false;
 
         /// <summary>
-        /// Multiplier that organizes the function pointer array properly
+        /// Main interpolation function call
         /// </summary>
-        protected abstract int Dimension { get; }
+        protected virtual FunctionPointer<InterpolationDelegate> MainFunction { get => s_mainFallback; }
+
+        public int ProcAllocSize => _processors.Length;
+
+        int IProcessGroupHandle.GroupId { get => _groupId; set => _groupId = value; }
+
+        private static void MainFallback(in TBaseType proc, in NativeFunctionGraph graph, ref ValueVector<TStruct> val, ref ExecutionContext ctx)
+        {
+            var func = graph.GetFunction(ctx.Progress);
+            val.Current = proc.Interpolate(val.Start, val.End, func, ctx.Progress);
+        }
+
         public GroupBase(int preallocSize)
         {
             _processors = new NativeArray<TBaseType>(preallocSize, Allocator.Persistent);
-            _functions = new NativeArray<RangedFunction>(preallocSize * EFSettings.MaxFunctions * Dimension, Allocator.Persistent);
             _events = new NativeArray<EventData<TStruct>>(preallocSize, Allocator.Persistent);
             _lookup = new NativeHashMap<int, int>(preallocSize, Allocator.Persistent);
             _removeQue = new NativeQueue<int>(Allocator.Persistent);
             _addQue = new NativeQueue<int>(Allocator.Persistent);
+            _graphHeap = new NativeArray<NativeFunctionGraph>(preallocSize, Allocator.Persistent);
 
             // Enques all prealloc indexes to be available
             for(int i = 0; i < preallocSize; i++)
@@ -56,127 +74,48 @@ namespace Aikom.FunctionalAnimation
         }
 
         /// <summary>
-        /// Adds a new processor into the group
-        /// </summary>
-        /// <param name="val"></param>
-        /// <param name="funcs"></param>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Add(TBaseType val, FunctionContainer cont)
-        {   
-            // No array resizing needed
-            if(_addQue.TryDequeue(out var index))
-            {
-                AddEntry(index, val, cont);
-                return;
-            }
-
-            // Resize
-            var processPos = _processors.Length;
-            _processors.ResizeArray(processPos * 2);
-            _functions.ResizeArray(_functions.Length * 2);
-            _events.ResizeArray(_events.Length * 2);
-            AddEntry(processPos, val, cont);
-        }
-
-        /// <summary>
-        /// Adds a new processor into the group
-        /// </summary>
-        /// <param name="val"></param>
-        /// <param name="funcs"></param>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void AddNonAlloc(TBaseType val, Span<RangedFunction> cont)
-        {
-            // No array resizing needed
-            if (_addQue.TryDequeue(out var index))
-            {
-                AddEntryNonAlloc(index, val, cont);
-                return;
-            }
-
-            // Resize
-            var processPos = _processors.Length;
-            _processors.ResizeArray(processPos * 2);
-            _functions.ResizeArray(_functions.Length * 2);
-            _events.ResizeArray(_events.Length * 2);
-            AddEntryNonAlloc(processPos, val, cont);
-        }
-
-        private void AddEntryNonAlloc(int index, TBaseType val, Span<RangedFunction> cont)
-        {
-            _processors[index] = val;
-            var start = index * EFSettings.MaxFunctions * Dimension;
-            var end = start + cont.Length;
-            var contIndex = 0;
-            for (int i = start; i < end; i++)
-            {
-                _functions[i] = cont[contIndex];
-                contIndex++;
-            }
-            _lookup.Add(val.Id, index);
-        }
-
-        private void AddEntry(int index, TBaseType val, FunctionContainer cont)
-        {
-            _processors[index] = val;
-            var start = index * EFSettings.MaxFunctions * Dimension;
-            var end = start + cont.Length;
-            var contIndex = 0;
-            for (int i = start; i < end; i++)
-            {
-                _functions[i] = cont[contIndex];
-                contIndex++;
-            }
-            _lookup.Add(val.Id, index);
-        }
-
-        /// <summary>
         /// Processes all interpolation logic
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Process()
+        public JobHandle Process(PluginValueCache cache, ContextQueryResults query, JobHandle dep)
         {
-            _isActive = _lookup.Count() > 0;
-            if (_isActive)
-            {
-                // Process internal has to be called before removing or calling listeners
-                // but it should be possible to combine all three processes into one 
-                // if the callback delegates could be used via pointers. This is slightly
-                // problematic due to unity objects behaviour after destroy calls but
-                // C# CLR objects should have no problems as long as the object reference itself
-                // exists inside QuickActions query, hence pinning it from GC
+            
+            // Process internal has to be called before removing or calling listeners
+            // but it should be possible to combine all three processes into one 
+            // if the callback delegates could be used via pointers. This is slightly
+            // problematic due to unity objects behaviour after destroy calls but
+            // C# CLR objects should have no problems as long as the object reference itself
+            // exists inside QuickActions query, hence pinning it from GC
 
-                ProcessInternalJob();
-                foreach(var idIndexPair in _lookup)
-                {
-                    var proc = _processors[idIndexPair.Value];
-                    var evt = _events[idIndexPair.Value];
-                    if (evt.Id != -1)
-                    {
-                        if (!CallbackRegistry.TryCall(evt))
-                            proc.Status = ExecutionStatus.Completed;
-                    }
-                    if (proc.Status == ExecutionStatus.Completed)
-                    {
-                        CallbackRegistry.UnregisterCallbacks(proc.Id);
-                        _removeQue.Enqueue(proc.Id);
-                    }
-                }
-                if (_removeQue.Count > 0)
-                    RemoveBatched();
-            }
-        }
-
-        private void ProcessInternalJob()
-        {
-            _processJob = new ProcessFloats 
+            _processJob = new InterpolationJob
             {
-                Processors = _processors,
-                Functions = _functions,
                 Events = _events,
-                Delta = Time.deltaTime
+                GraphHeap = query.Graphs,
+                Contexts = query.Contexts,
+                PluginValueCache = cache,
+                MainFunction = MainFunction
             };
-            _processJob.Run();
-            //_processJob.Execute();    // For debug purposes
+
+            return _processJob.Schedule(dep);
+
+            //foreach (var idIndexPair in _lookup)
+            //{
+            //    var proc = _processors[idIndexPair.Value];
+            //    var evt = _events[idIndexPair.Value];
+            //    if (evt.Id != -1)
+            //    {
+            //        if (!CallbackRegistry.TryCall(evt))
+            //            proc.Status = ExecutionStatus.Completed;
+            //    }
+            //    if (proc.Status == ExecutionStatus.Completed)
+            //    {
+            //        CallbackRegistry.UnregisterCallbacks(proc.Id);
+            //        _removeQue.Enqueue(proc.Id);
+            //    }
+            ////}
+            //if (_removeQue.Count > 0)
+            //    RemoveBatched();
+            
         }
 
         /// <summary>
@@ -184,7 +123,13 @@ namespace Aikom.FunctionalAnimation
         /// </summary>
         public void Dispose()
         {
-            _functions.Dispose();
+            for(int i = 0; i < _graphHeap.Length; i++)
+            {
+                var graph = _graphHeap[i];
+                if(graph.IsCreated)
+                    graph.Dispose();
+            }
+            _graphHeap.Dispose();
             _processors.Dispose();
             _events.Dispose();
             _lookup.Dispose();
@@ -192,35 +137,6 @@ namespace Aikom.FunctionalAnimation
             _addQue.Dispose();
         }
 
-        /// <summary>
-        /// Sets passive flags for a process
-        /// </summary>
-        /// <param name="id"></param>
-        /// <param name="flags"></param>
-        public void SetPassiveFlags(int id, EventFlags flags)
-        {
-            if(_lookup.TryGetValue(id, out var index))
-            {
-                var processor = _processors[index];
-                processor.PassiveFlags |= flags;
-                _processors[index] = processor;
-            }
-        }
-
-        /// <summary>
-        /// Forces the execution status on a process
-        /// </summary>
-        /// <param name="id"></param>
-        /// <param name="status"></param>
-        public void ForceExecutionStatus(int id, ExecutionStatus status)
-        {
-            if (_lookup.TryGetValue(id, out var index))
-            {
-                var processor = _processors[index];
-                processor.Status = status;
-                _processors[index] = processor;
-            }
-        }
 
         /// <summary>
         /// Removes a running process from the process list
@@ -246,105 +162,9 @@ namespace Aikom.FunctionalAnimation
                 RemoveQue = _removeQue,
                 Processors = _processors,
                 AddQue = _addQue,
+                GraphHeap = _graphHeap,
             };
             _batchRemover.Run();
-        }
-
-        /// <summary>
-        /// Gets a current execution value of a process
-        /// </summary>
-        /// <param name="id"></param>
-        /// <returns></returns>
-        public TBaseType GetValue(int id)
-        {
-            if(_lookup.TryGetValue(id, out var index))
-            {
-                return _processors[index];
-            }
-            return default;
-        }
-
-        void IProcessGroupHandle<IGroupProcessor>.PrecompileJobAssemblies()
-        {
-            TBaseType temp = default;
-            var clock = new Clock(1);
-            clock.Tick(1);
-            temp.Clock = clock;
-            FunctionContainer tempFunc = new FunctionContainer(Dimension);
-            tempFunc.Set(0, 0, new RangedFunction(Function.Linear));
-            var handle = EFAnimator.RegisterTarget<TStruct, TBaseType>(temp, tempFunc);
-            handle.OnStart((v) => LogCalls(handle, "OnStartInit: "))
-                .OnUpdate((v) => LogCalls(handle, "OnUpdateInit: "))
-                .OnComplete((v) => LogCalls(handle, "OnCompleteInit: "))
-                .OnPause((v) => LogCalls(handle, "OnPauseInit: "))
-                .OnKill((v) => LogCalls(handle, "OnKillInit: "))
-                .OnResume((v) => LogCalls(handle, "OnResumeInit: "))
-                .Pause()
-                .Resume();
-            Process();
-            static void LogCalls(IInterpolatorHandle<TStruct> baseT, string message)
-            {
-#if USE_LOGS
-                Debug.Log(message + "GroupId: " + baseT.GetGroupId() + " ProcessId: " + baseT.Id);
-#endif
-            }
-        }
-
-        /// <summary>
-        /// Restarts an existing process if available
-        /// </summary>
-        /// <param name="id"></param>
-        public void RestartProcess(int id)
-        {
-            TryModifyValue(id, Restart);
-            static TBaseType Restart(TBaseType original)
-            {
-                original.Restart();
-                return original;
-            }
-        }
-
-        public void FlipValues(int id)
-        {
-            if (_lookup.TryGetValue(id, out var index))
-            {
-                var processor = _processors[index];
-                processor = (TBaseType)processor.FlipValues();
-                _processors[index] = processor;
-            }
-        }
-
-        public void SetMaxLoopCount(int id, int count)
-        {
-            if (_lookup.TryGetValue(id, out var index))
-            {
-                var processor = _processors[index];
-                var clock = processor.Clock;
-                clock.MaxLoops = count;
-                processor.Clock = clock;
-                _processors[index] = processor;
-            }
-        }
-
-        private void TryModifyValue(int id, Func<TBaseType, TBaseType> action)
-        {
-            if(_lookup.TryGetValue(id, out var index))
-            {
-                var processor = _processors[index];
-                _processors[index] = action(processor);
-            }
-        }
-
-        public void InvertProcess(int id)
-        {
-            if( _lookup.TryGetValue(id,out var index))
-            {
-                var processor = _processors[index];
-                var clock = processor.Clock;
-                clock.InvertDirection();
-                processor.Clock = clock;
-                _processors[index] = processor;
-            }
         }
 
         [BurstCompile]
@@ -354,6 +174,7 @@ namespace Aikom.FunctionalAnimation
             public NativeQueue<int> RemoveQue;
             public NativeArray<TBaseType> Processors;
             public NativeQueue<int> AddQue;
+            public NativeArray<NativeFunctionGraph> GraphHeap;
 
             public void Execute()
             {
@@ -361,8 +182,11 @@ namespace Aikom.FunctionalAnimation
                 {
                     var index = Map[id];
                     var processor = Processors[index];
-                    processor.Status = ExecutionStatus.Inactive;
-                    processor.Id = -1;
+                    var graph = GraphHeap[index];
+                    graph.Dispose();
+                    GraphHeap[index] = graph;
+                    //processor.Status = ExecutionStatus.Inactive;
+                    //processor.Id = -1;
                     Processors[index] = processor;
                     Map.Remove(id);
                     AddQue.Enqueue(index);
@@ -371,91 +195,66 @@ namespace Aikom.FunctionalAnimation
         }
 
         [BurstCompile]
-        public struct ProcessFloats : IJob
+        protected struct InterpolationJob : IJob
         {
-            public NativeArray<TBaseType> Processors;
-            public NativeArray<EventData<TStruct>> Events;
-            public NativeArray<RangedFunction> Functions;
-            public float Delta;
+            public PluginValueCache PluginValueCache;
 
-            public void Execute()
+            public NativeArray<EventData<TStruct>> Events;
+            public NativeArray<NativeFunctionGraph> GraphHeap;
+            public NativeArray<ExecutionContext> Contexts;
+            
+            public FunctionPointer<InterpolationDelegate> MainFunction;
+
+            public unsafe void Execute()
             {
-                var length = Processors.Length;
+                var length = PluginValueCache.Capacity;
                 for (int i = 0; i < length; i++)
                 {
-                    var dataPoint = Processors[i];
-                    if (dataPoint.Status == ExecutionStatus.Paused || dataPoint.Status == ExecutionStatus.Inactive)
+                    var ctx = Contexts[i];
+                    
+                    if (ctx.Status == ExecutionStatus.Paused || ctx.Status == ExecutionStatus.Inactive)
                     {
                         var eventFlag = Events[i];
                         eventFlag.Id = -1;
                         Events[i] = eventFlag;
                         continue;
                     }
+                    var processor = PluginValueCache.GetProcessor<TStruct, TBaseType>(i);
+                    var activeFlags = ctx.ActiveFlags;
+                    var graph = GraphHeap[i];
 
-                    if (dataPoint.Clock.Time == 0 && (dataPoint.PassiveFlags & EventFlags.OnStart) == EventFlags.OnStart)
-                        dataPoint.ActiveFlags |= EventFlags.OnStart;
-                    var clock = dataPoint.Clock;
-                    var currentLoop = clock.CurrentLoop;
-                    var time = clock.Tick(Delta);
-                    dataPoint.Clock = clock;
-                    for (int axis = 0; axis < dataPoint.AxisCount; axis++)
-                    {
-                        var startingPoint = i * EFSettings.MaxFunctions * dataPoint.AxisCount;
-                        startingPoint += axis * EFSettings.MaxFunctions;
-                        if (!dataPoint.IsValid(axis))
-                            continue;
-                        var endingPoint = startingPoint + dataPoint.PointerCount(axis);
-                        for (int j = startingPoint; j < endingPoint; j++)
-                        {
-                            var rangedFunc = Functions[j];
-                            var startingNode = rangedFunc.Start;
-                            var endingNode = rangedFunc.End;
-                            if (time >= startingNode.x && time <= endingNode.x)
-                            {
-                                dataPoint.SetValue(axis, rangedFunc.Interpolate(dataPoint.ReadFrom(axis), dataPoint.ReadTo(axis), time));
-                                if ((dataPoint.PassiveFlags & EventFlags.OnUpdate) == EventFlags.OnUpdate)
-                                    dataPoint.ActiveFlags |= EventFlags.OnUpdate;
-                                break;
-                            }
-                        }
-
-                    }
-                    if(currentLoop < dataPoint.Clock.CurrentLoop)
-                    {
-                        if ((dataPoint.PassiveFlags & EventFlags.OnLoopCompleted) == EventFlags.OnLoopCompleted)
-                            dataPoint.ActiveFlags |= EventFlags.OnLoopCompleted;
-                    }
-
-                    if (dataPoint.Clock.IsCompleted) 
-                        dataPoint.Status = ExecutionStatus.Completed;
-
-                    // Complete cb check
-                    if ((dataPoint.PassiveFlags & EventFlags.OnComplete) == EventFlags.OnComplete &&
-                        dataPoint.Status == ExecutionStatus.Completed)
-                        dataPoint.ActiveFlags |= EventFlags.OnComplete;
-
-                    // Overall flag check
-                    if (dataPoint.Status == ExecutionStatus.Completed)
-                        dataPoint.ActiveFlags |= EventFlags.OnKill;
-                    var hasActiveFlags = dataPoint.ActiveFlags != EventFlags.None;
-                    var flagIndexer = Events[i];
-                    if (hasActiveFlags)
-                    {
-                        flagIndexer.Id = dataPoint.Id;
-                        flagIndexer.Flags = dataPoint.ActiveFlags;
-                        flagIndexer.Value = dataPoint.Current;
-                    }
-                    else
-                    {
-                        flagIndexer.Id = -1;
-                    }
-                    // Reset for next cycle
-                    dataPoint.ActiveFlags = EventFlags.None;
-
-                    // Finalization
-                    Processors[i] = dataPoint;
-                    Events[i] = flagIndexer;
+                    // Main function call
+                    var val = new ValueVector<TStruct>(); // temp
+                    MainFunction.Invoke(in processor, in graph, ref val, ref ctx);
+                    Events[i] = new EventData<TStruct>(val.Current, ctx, 0);
                 }
+            }
+        }
+    }
+
+    [BurstCompile]
+    internal struct ContextQuery : IJobParallelFor
+    {
+        public int GroupReference;
+        [ReadOnly] public NativeArray<Process> Pids;
+        [ReadOnly] public NativeArray<int> GroupReferences;
+        [ReadOnly] public NativeArray<ExecutionContext> Contexts;
+        [ReadOnly] public NativeArray<NativeFunctionGraph> Graphs;
+
+        [WriteOnly] public NativeArray<NativeFunctionGraph> ResultGraphs;
+        [WriteOnly] public NativeArray<ExecutionContext> ResultContexts;
+
+        public void Execute(int index)
+        {
+            var gref = GroupReferences[index];
+            if (gref == GroupReference)
+            {
+                var gid = Pids[index].GroupId;
+                var graph = Graphs[index];
+                var ctx = Contexts[index];
+
+                ResultContexts[gid] = ctx;
+                ResultGraphs[gid] = graph;
             }
         }
     }

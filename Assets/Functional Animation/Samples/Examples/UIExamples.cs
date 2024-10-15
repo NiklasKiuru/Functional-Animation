@@ -40,48 +40,48 @@ public class UIExamples : MonoBehaviour
         {   
             // Create the sub panel element
             var setting = _settings[i];
-            var subPanel = CreateSubContainer("Element: " + i);
+            //var subPanel = CreateSubContainer("Element: " + i);
 
             // Create an animation handle for the element
             // This handle handles the restart, resume and kill automatically
-            setting.Handle = subPanel.AnimatePosition<MouseEnterEvent, MouseLeaveEvent>(setting.Offset, setting.Duration, setting.Ease);
+            //setting.Handle = subPanel.AnimatePosition<MouseEnterEvent, MouseLeaveEvent>(setting.Offset, setting.Duration, setting.Ease);
             _settings[i] = setting;
         }
 
-        var shizzleElement = CreateSubContainer("Fizzle element:");
-        var pos = shizzleElement.transform.matrix.GetPosition();
-        var animHandle = EF.Create(pos.x, pos.x + _fizzleAmplitude, 1, _test)
-            .OnUpdate(this, (v) => shizzleElement.transform.position = new Vector3(v, pos.y, 0))
-            .Pause();
-        shizzleElement.RegisterCallback<MouseDownEvent>((evt) => 
-        {
-            if (animHandle.IsAlive)
-                animHandle.Resume();
-            else
-            {   
-                animHandle
-                .Restart()
-                .OnUpdate(this, (v) => shizzleElement.transform.position = new Vector3(v, pos.y, 0));
-            }
+        //var shizzleElement = CreateSubContainer("Fizzle element:");
+        //var pos = shizzleElement.transform.matrix.GetPosition();
+        //var animHandle = EF.Create(pos.x, pos.x + _fizzleAmplitude,  1, _test)
+        //    .OnUpdate(this, (v) => shizzleElement.transform.position = new Vector3(v, pos.y, 0))
+        //    .Pause();
+        //shizzleElement.RegisterCallback<MouseDownEvent>((evt) => 
+        //{
+        //    if (animHandle.IsAlive())
+        //        animHandle.Resume();
+        //    else
+        //    {   
+        //        animHandle
+        //        .Restart()
+        //        .OnUpdate(this, (v) => shizzleElement.transform.position = new Vector3(v, pos.y, 0));
+        //    }
                 
-        });
+        //});
 
-        VisualElement CreateSubContainer(string header)
-        {
-            var headerElement = UIExtensions.CreateElement<Label>(mainContainer);
-            headerElement.text = header;
-            headerElement.style.width = new StyleLength(new Length(360, LengthUnit.Pixel));
-            headerElement.style.height = new StyleLength(new Length(120, LengthUnit.Pixel));
-            headerElement.style.color = Color.white;
-            headerElement.style.fontSize = 40;
-            headerElement.style.unityTextAlign = TextAnchor.MiddleCenter;
+        //VisualElement CreateSubContainer(string header)
+        //{
+        //    var headerElement = UIExtensions.CreateElement<Label>(mainContainer);
+        //    headerElement.text = header;
+        //    headerElement.style.width = new StyleLength(new Length(360, LengthUnit.Pixel));
+        //    headerElement.style.height = new StyleLength(new Length(120, LengthUnit.Pixel));
+        //    headerElement.style.color = Color.white;
+        //    headerElement.style.fontSize = 40;
+        //    headerElement.style.unityTextAlign = TextAnchor.MiddleCenter;
 
-            var subPanel = UIExtensions.CreateElement(mainContainer);
-            subPanel.style.width = new StyleLength(new Length(360, LengthUnit.Pixel));
-            subPanel.style.height = new StyleLength(new Length(120, LengthUnit.Pixel));
-            subPanel.style.backgroundColor = new Color(0.3f, 0.3f, 0.3f);
-            return subPanel;
-        }
+        //    var subPanel = UIExtensions.CreateElement(mainContainer);
+        //    subPanel.style.width = new StyleLength(new Length(360, LengthUnit.Pixel));
+        //    subPanel.style.height = new StyleLength(new Length(120, LengthUnit.Pixel));
+        //    subPanel.style.backgroundColor = new Color(0.3f, 0.3f, 0.3f);
+        //    return subPanel;
+        //}
     }
 
     [Serializable]
@@ -91,6 +91,6 @@ public class UIExamples : MonoBehaviour
         public float Duration;
         public Vector3 Offset;
 
-        [HideInInspector] public IInterpolatorHandle<float3> Handle;
+        [HideInInspector] public IInterpolatorHandle<float3, Vector3Interpolator> Handle;
     }
 }

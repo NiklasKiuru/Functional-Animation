@@ -1,7 +1,14 @@
+using System;
+using System.Runtime.InteropServices;
+using Unity.Burst;
+
 namespace Aikom.FunctionalAnimation
 {
     public interface IGroupProcessor
     {
+        public EventFlags PassiveFlags { get; set; }
+        public ExecutionStatus Status { get; set; }
+
         public int GetGroupId();
         /// <summary>
         /// Process id of this handle
@@ -11,27 +18,54 @@ namespace Aikom.FunctionalAnimation
         /// <summary>
         /// Alive status of the process
         /// </summary>
+        [BurstDiscard]
         public bool IsAlive { get; internal set; }
 
         /// <summary>
         /// Shortcut struct for process identifier
         /// </summary>
         /// <returns></returns>
-        public ProcessId GetIdentifier()
+        public Process GetIdentifier()
         {
-            return new ProcessId(Id, GetGroupId());
+            return new Process(Id, GetGroupId());
+        }
+
+        public static int GetStaticGroupID<T, D>()
+            where T : unmanaged
+            where D : IInterpolator<T>
+        {
+            return typeof(D).GetHashCode()^typeof(T).GetHashCode();
         }
     }
 
-    public struct ProcessId
+    public readonly struct Process : IEquatable<Process>
     {
-        public int Id { get; }
-        public int GroupId { get; }
+        public readonly int Id { get; }
+        public readonly int GroupId { get; }
+        public readonly int Version { get; }
 
-        public ProcessId(int id, int group)
+        public Process(int id, int group)
         {
             Id = id;
             GroupId = group;
+            Version = 0;
+        }
+
+        private Process(Process old)
+        {
+            Id = old.Id;
+            GroupId = old.GroupId;
+            Version = old.Version + 1;
+        }
+
+        internal Process IncrimentVersion()
+        {
+            return new Process(this);
+        }
+
+        public bool Equals(Process other)
+        {
+            return Id == other.Id && GroupId == other.GroupId && Version == other.Version;
         }
     }
 }

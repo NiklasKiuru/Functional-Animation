@@ -8,9 +8,6 @@ namespace Aikom.FunctionalAnimation
         public FloatGroup(int preallocSize) : base(preallocSize)
         {
         }
-
-        public override int GroupId { get => sizeof(float); }
-        protected override int Dimension => 1;
     }
 }
 

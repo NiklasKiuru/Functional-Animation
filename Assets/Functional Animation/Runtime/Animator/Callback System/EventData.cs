@@ -10,6 +10,13 @@ namespace Aikom.FunctionalAnimation
         public int Id;
         public EventFlags Flags;
         public T Value;
+
+        public EventData(T value, ExecutionContext ctx, int id)
+        {
+            Id = id;
+            Value = value;
+            Flags = ctx.ActiveFlags;
+        }
     }
 }
 

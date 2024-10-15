@@ -68,22 +68,22 @@ MonoBehaviour:
         _nodes:
         - {x: 0, y: 0}
         - {x: 0.5, y: 1}
-        - {x: 1, y: -0.6}
+        - {x: 1, y: -1}
     Y:
       _functions:
       - _value: Linear
         _hash: 175291781
       _timeline:
         _nodes:
-        - {x: 0, y: 0}
-        - {x: 1, y: 0.7}
+        - {x: 0, y: -0.8}
+        - {x: 1, y: 0}
     Z:
       _functions:
       - _value: Linear
         _hash: 175291781
       _timeline:
         _nodes:
-        - {x: 0, y: 0}
+        - {x: 0, y: -0.2}
         - {x: 1, y: 0.8}
     W:
       _functions:

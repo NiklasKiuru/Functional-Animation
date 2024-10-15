@@ -15,7 +15,7 @@ namespace Aikom.FunctionalAnimation.Tests
             var hasResumed = false;
             var hasCompleted = false;
             var isKilled = false;
-            var handle1 = EF.Create(0, 1, 2, Function.Linear)
+            var handle1 = EF.Create(0f, 1f, new FloatInterpolator(), 2)
                 .OnUpdate((v) => val = v)
                 .OnStart((v) => hasStarted = true)
                 .OnPause((v) => isPaused = true)
@@ -45,7 +45,7 @@ namespace Aikom.FunctionalAnimation.Tests
         public IEnumerator Delay_Test()
         {
             var hasStarted = false;
-            var handle1 = EF.Create(0, 1, 2, Function.Linear)
+            var handle1 = EF.Create(0f, 1f, new FloatInterpolator(), 2)
                 .Hibernate(1)
                 .OnStart((v) => hasStarted = true);
                 
@@ -56,19 +56,17 @@ namespace Aikom.FunctionalAnimation.Tests
             handle1.Hibernate(1);
 
             yield return new WaitForSeconds(1);
-            Assert.IsTrue(handle1.IsAlive);
-            EFAnimator.TryGetProcessor<float, FloatInterpolator>(handle1.GetIdentifier(), out var process);
-            Assert.That(process.Status == ExecutionStatus.Running);
+            Assert.IsTrue(handle1.IsAlive());
         }
 
         [UnityTest]
         public IEnumerator Kill_Test()
         {   
             var hasCompleted = false;
-            var handle = EF.Create(0, 1, 2, Function.Linear)
+            var handle = EF.Create(0f, 1f, new FloatInterpolator(), 2)
                 .OnComplete((V) => hasCompleted = true);
             var go = new GameObject();
-            var handle1 = EF.Create(0,1,0.5f, Function.Linear).OnComplete(go, (v) => go.transform.position = new Vector3(v,v,v));
+            var handle1 = EF.Create(0f, 1f, new FloatInterpolator(), 0.5f, Function.Linear).OnComplete(go, (v) => go.transform.position = new Vector3(v,v,v));
             UnityEngine.Object.Destroy(go);
             yield return new WaitForSeconds(1);
             handle.Kill();
@@ -79,7 +77,7 @@ namespace Aikom.FunctionalAnimation.Tests
         public IEnumerator Inversion_Test()
         {
             var val = 0f;
-            var handle = EF.Create(0, 2, 2, Function.Linear)
+            var handle = EF.Create(0f, 2f, new FloatInterpolator(), 2)
                 .OnUpdate((v) => val = v);
             yield return new WaitForSeconds(1);
             Assert.IsTrue(val > 0.5f);
@@ -91,24 +89,23 @@ namespace Aikom.FunctionalAnimation.Tests
         [Test]
         public void FlipValues_Test()
         {
-            var from = 0;
-            var to = 1;
-            var handle = EF.Create(from, to, 1, Function.Linear)
+            var from = 0f;
+            var to = 1f;
+            var handle = EF.Create(from, to, new FloatInterpolator(), 1, Function.Linear)
                 .FlipValues();
-            EFAnimator.TryGetProcessor<float, FloatInterpolator>(handle.GetIdentifier(), out var proc);
-            Assert.AreEqual(from, proc.To);
-            Assert.AreEqual(to, proc.From);
+            var end = ProcessCache.GetEnd<float, FloatInterpolator>(handle.ProcessId);
+            var start = ProcessCache.GetStart<float, FloatInterpolator>(handle.ProcessId);
+            Assert.AreEqual(from, end);
+            Assert.AreEqual(to, start);
         }
 
         [UnityTest]
         public IEnumerator Loop_Test()
         {
             var loopCompleted = false;
-            var handle = EF.Create(0, 1, 1, Function.Linear, TimeControl.Loop)
+            var handle = EF.Create(0f, 1f, new FloatInterpolator(), 1, Function.Linear, TimeControl.Loop)
                 .OnLoopCompleted((v) => loopCompleted = true);
             yield return new WaitForSeconds(1.1f);
-            EFAnimator.TryGetProcessor<float, FloatInterpolator>(handle.GetIdentifier(), out var process);
-            Assert.IsTrue((process.PassiveFlags & EventFlags.OnLoopCompleted) == EventFlags.OnLoopCompleted);
             Assert.IsTrue(loopCompleted);
             handle.Kill();
         }

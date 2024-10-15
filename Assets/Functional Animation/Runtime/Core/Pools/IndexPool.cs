@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using Unity.Collections;
 using UnityEngine;
 
 namespace Aikom.FunctionalAnimation
@@ -9,10 +10,17 @@ namespace Aikom.FunctionalAnimation
         private HashSet<int> _indeces = new();
         private Stack<int> _unusedIndeces;
         private int _count = 0;
+        private NativeHashSet<int> _indecies;
 
         public IndexPool(int preAlloc)
         {
             _unusedIndeces = new Stack<int>(preAlloc);
+            _indecies = new NativeHashSet<int>(preAlloc, Allocator.Persistent);
+        }
+
+        public void Dispose()
+        {
+            _indecies.Dispose();
         }
 
         public int GetNewId()

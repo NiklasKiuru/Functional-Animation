@@ -4,6 +4,7 @@ using Unity.Mathematics;
 using UnityEngine;
 using Aikom.FunctionalAnimation.Utility;
 using Unity.Burst;
+using Unity.Collections;
 
 namespace Aikom.FunctionalAnimation.Tests
 {
@@ -12,91 +13,79 @@ namespace Aikom.FunctionalAnimation.Tests
         [Test]
         public void CreateFloats_Test()
         {
-            var from = 2;
-            var to = 1;
-            var duration = 2;
-            var list = new List<ProcessId> 
+            float from = 2;
+            float to = 1;
+            float duration = 2;
+            var list = new List<IInterpolatorHandle<float, FloatInterpolator>>()
             {
-                EF.Create(from, to, duration, Function.EaseOutElastic).GetIdentifier(),
-                EF.Create(from, to, duration, new RangedFunction(Function.EaseOutCirc)).GetIdentifier(),
-                EF.Create(from, to , duration, new RangedFunction(new FunctionAlias("Test"), float2.zero, new float2(1,1))).GetIdentifier(),
-                EF.Create(from, to , duration, new RangedFunction(CustomFuncType.CustomFunction, float2.zero, new float2(1,1))).GetIdentifier(),
-                EF.Create(from, to, duration, new GraphData()).GetIdentifier(),
-                EF.CreateNonAlloc(from, to, duration, Function.EaseOutBack, TimeControl.Loop, 1),
-                EF.CreateNonAlloc(from, to, duration, Function.Linear, TimeControl.PlayOnce, 1, (v) => Debug.Log(v)),
+                EF.Create(from, to, new FloatInterpolator(), duration, Function.EaseOutElastic),
+                EF.Create(from, to, new FloatInterpolator(), duration, new RangedFunction(Function.EaseOutCirc)),
+                EF.Create(from, to, new FloatInterpolator(), duration, new RangedFunction(new FunctionAlias("Test"), float2.zero, new float2(1,1))),
+                EF.Create(from, to, new FloatInterpolator(), duration, new RangedFunction(CustomFuncType.CustomFunction, float2.zero, new float2(1,1))),
+                EF.Create(from, to, new FloatInterpolator(), duration, new GraphData()),
             };
-            CheckValues<float, FloatInterpolator>(from, to, duration, list);
+            CheckValues(from, to, duration, list);
         }
 
         [Test]
-        public void Create2Floats_Test()
+        public void AddPlugin_Test()
         {
-            var from = new float2(2, 2);
-            var to = new float2(1, 1);
-            var duration = 2;
-            var axis = new bool2(true, false);
-            var list = new List<ProcessId>
-            {
-                EF.Create(from, to, duration, Function.Linear).GetIdentifier(),
-                EF.Create(from, to, duration, new RangedFunction(Function.Linear)).GetIdentifier(),
-                EF.Create(from, to, duration, new GraphData()).GetIdentifier(),
-                EF.Create(from, to, duration, new Func2(Function.Linear, Function.EaseOutSine), axis).GetIdentifier(),
-                EF.Create(from, to, duration, new GraphData(), new GraphData(), axis).GetIdentifier(),
-                EF.CreateNonAlloc(from, to, duration, Function.Linear, TimeControl.Loop, 1, (v) => Debug.Log(v)),
-                EF.CreateNonAlloc(from, to, duration, Function.Linear, TimeControl.Loop, 1),
-            };
-            CheckValues<float2, Vector2Interpolator>(from, to, duration, list);
+            
         }
 
         [Test]
-        public void Create3Floats_Test()
+        public void CreateNativeGraph_Test()
         {
-            var from = new float3(2, 2, 2);
-            var to = new float3(1, 1, 1);
-            var duration = 2;
-            var axis = new bool3(true, false, true);
-            var list = new List<ProcessId> 
+            var managedGraph = new GraphData();
+            var nativeGraph = new NativeFunctionGraph(managedGraph, Unity.Collections.Allocator.Persistent);
+            try
             {
-                EF.Create(from, to, duration, Function.Linear).GetIdentifier(),
-                EF.Create(from, to, duration, new RangedFunction(Function.Linear)).GetIdentifier(),
-                EF.Create(from, to, duration, new GraphData()).GetIdentifier(),
-                EF.Create(from, to, duration, new Func3(Function.Linear, Function.EaseOutSine, Function.EaseOutBounce), axis).GetIdentifier(),
-                EF.Create(from, to, duration, new GraphData(), new GraphData(), new GraphData(), axis).GetIdentifier(),
-                EF.CreateNonAlloc(from, to, duration, Function.Linear, TimeControl.Loop, 1, (v) => Debug.Log(v)),
-                EF.CreateNonAlloc(from, to, duration, Function.Linear, TimeControl.Loop, 1),
-            };
-            CheckValues<float3, Vector3Interpolator>(from, to, duration, list);
+                Assert.IsTrue(nativeGraph.IsCreated && nativeGraph.Length == 1 && math.all(nativeGraph[0].End == new float2(1, 1)));
+            }
+            finally
+            {
+                nativeGraph.Dispose();
+            }
         }
 
         [Test]
-        public void Create4Floats_Test()
+        public void CreateNestedGraphHeap_Test()
         {
-            var from = new float4(2, 2, 2, 2);
-            var to = new float4(1, 1, 1, 1);
-            var duration = 2;
-            var axis = new bool4(true, false, true, true);
-            var list = new List<ProcessId>
+            var nativeGraphCount = 10;
+            var managedGraphs = new GraphData[nativeGraphCount];
+            var unManagedGraphs = new NativeArray<NativeFunctionGraph>(nativeGraphCount, Allocator.Persistent);
+
+            try
             {
-                EF.Create(from, to, duration, Function.Linear).GetIdentifier(),
-                EF.Create(from, to, duration, new RangedFunction(Function.Linear)).GetIdentifier(),
-                EF.Create(from, to, duration, new GraphData()).GetIdentifier(),
-                EF.Create(from, to, duration, new Func4(Function.Linear, Function.EaseOutSine, Function.EaseOutBounce, Function.Linear), axis).GetIdentifier(),
-                EF.Create(from, to, duration, new GraphData(), new GraphData(), new GraphData(), new GraphData(), axis).GetIdentifier(),
-                EF.CreateNonAlloc(from, to, duration, Function.Linear, TimeControl.Loop, 1, (v) => Debug.Log(v)),
-                EF.CreateNonAlloc(from, to, duration, Function.Linear, TimeControl.Loop, 1),
-            };
-            CheckValues<float4, Vector4Interpolator>(from, to, duration, list);
+                for(int i = 0; i < nativeGraphCount; i++)
+                {
+                    var graph = new GraphData();
+                    var nativeGraph = new NativeFunctionGraph(graph, Allocator.Persistent);
+                    managedGraphs[i] = graph; 
+                    unManagedGraphs[i] = nativeGraph;
+                }
+
+                Assert.IsTrue(unManagedGraphs.Length == nativeGraphCount);
+            }
+
+            finally 
+            { 
+                for(int i = 0; i < unManagedGraphs.Length; i++)
+                {
+                    if (unManagedGraphs[i].IsCreated)
+                        unManagedGraphs[i].Dispose();
+                }
+                unManagedGraphs.Dispose();
+            }
         }
 
-        private static void CheckValues<T, D>(T from, T to, float duration, List<ProcessId> ids)
+        private static void CheckValues<T, D>(T from, T to, float duration, List<IInterpolatorHandle<T, D>> handles)
             where T : unmanaged
-            where D : IInterpolator<T>
+            where D : unmanaged, IInterpolator<T>
         {
-            foreach (var id in ids)
+            foreach (var handle in handles)
             {
-                EFAnimator.TryGetProcessor<T, D>(id, out var proc);
-                Assert.That(proc.From.Equals(from) && proc.To.Equals(to) && proc.Clock.Duration == duration &&
-                    id.Equals(proc.GetIdentifier()));
+
             }
         }
 

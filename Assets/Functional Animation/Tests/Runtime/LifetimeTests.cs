@@ -9,38 +9,34 @@ namespace Aikom.FunctionalAnimation.Tests
         [UnityTest]
         public IEnumerator LifeTime_Test()
         {
-            var handle1 = EF.Create(0, 1, 2, Function.Linear);
-            var handle2 = EF.Create(0, 1, 2, Function.Linear, TimeControl.Loop)
+            var handle1 = EF.Create(0, 1f, new FloatInterpolator(), 2, Function.Linear);
+            var handle2 = EF.Create(0, 1f, new FloatInterpolator(), 2, Function.Linear, TimeControl.Loop)
                 .SetLoopLimit(2);
-            var handle3 = EF.Create(0, 1, 2, Function.Linear, TimeControl.PingPong)
+            var handle3 = EF.Create(0, 1f, new FloatInterpolator(), 2, Function.Linear, TimeControl.PingPong)
                 .SetLoopLimit(3);
-            var nonallocHandle1 = EF.CreateNonAlloc(0, 1, 2, Function.Linear, TimeControl.Loop, 2);
-            var infiniteHandle = EF.CreateNonAlloc(0, 1, 2, Function.Linear, TimeControl.Loop, -1);
+            var infiniteHandle = EF.Create(0f, 1f, new FloatInterpolator(), 2, Function.Linear, TimeControl.Loop);
 
             yield return null;
             yield return new WaitForSeconds(2);
 
-            Assert.IsTrue(!handle1.IsAlive);
-            Assert.IsTrue(handle2.IsAlive);
-            Assert.IsTrue(handle3.IsAlive);
-            Assert.IsTrue(EFAnimator.TryGetProcessor<float, FloatInterpolator>(nonallocHandle1, out _));
-            Assert.IsTrue(EFAnimator.TryGetProcessor<float, FloatInterpolator>(infiniteHandle, out _));
+            Assert.IsTrue(!handle1.IsAlive());
+            Assert.IsTrue(handle2.IsAlive());
+            Assert.IsTrue(handle3.IsAlive());
+            Assert.IsTrue(infiniteHandle.IsAlive());
 
             yield return new WaitForSeconds(2);
 
-            Assert.IsTrue(!handle1.IsAlive);
-            Assert.IsTrue(!handle2.IsAlive);
-            Assert.IsTrue(handle3.IsAlive);
-            Assert.IsTrue(!EFAnimator.TryGetProcessor<float, FloatInterpolator>(nonallocHandle1, out _));
-            Assert.IsTrue(EFAnimator.TryGetProcessor<float, FloatInterpolator>(infiniteHandle, out _));
+            Assert.IsTrue(!handle1.IsAlive());
+            Assert.IsTrue(!handle2.IsAlive());
+            Assert.IsTrue(handle3.IsAlive());
+            Assert.IsTrue(infiniteHandle.IsAlive());
 
             yield return new WaitForSeconds(2);
 
-            Assert.IsTrue(!handle1.IsAlive);
-            Assert.IsTrue(!handle2.IsAlive);
-            Assert.IsTrue(!handle3.IsAlive);
-            Assert.IsTrue(!EFAnimator.TryGetProcessor<float, FloatInterpolator>(nonallocHandle1, out _));
-            Assert.IsTrue(EFAnimator.TryGetProcessor<float, FloatInterpolator>(infiniteHandle, out _));
+            Assert.IsTrue(!handle1.IsAlive());
+            Assert.IsTrue(!handle2.IsAlive());
+            Assert.IsTrue(!handle3.IsAlive());
+            Assert.IsTrue(infiniteHandle.IsAlive());
         }
     }
 }

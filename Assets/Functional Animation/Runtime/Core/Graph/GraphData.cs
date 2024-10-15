@@ -1,5 +1,7 @@
+using Codice.Client.BaseCommands;
 using System;
 using System.Collections.Generic;
+using Unity.Burst.Intrinsics;
 using UnityEngine;
 
 namespace Aikom.FunctionalAnimation
@@ -32,48 +34,25 @@ namespace Aikom.FunctionalAnimation
             _timeline = new Timeline();
         }
 
+        public void CopyData(ref Span<RangedFunction> span)
+        {
+            int max = Mathf.Min(span.Length, _functions.Length);
+            for (int i = 0; i < max; ++i)
+            {
+                span[i] = new RangedFunction
+                {
+                    Pointer = BurstFunctionCache.GetCachedPointer(_functions[i]),
+                    Start = _timeline.Nodes[i],
+                    End = _timeline.Nodes[i + 1]
+                };
+            }
+        }
+
         /// <summary>
-        /// Generates a function that modulates a value with this data based on given input
+        /// Evaluates the graph at given time point
         /// </summary>
+        /// <param name="time"></param>
         /// <returns></returns>
-        //public Func<float, float> GetEvaluator()
-        //{
-        //    var funcs = new Func<float, float>[_functions.Length];
-        //    for (int i = 0; i < _functions.Length; i++)
-        //    {
-        //        var startingNode = _timeline.Nodes[i];
-        //        var endingNode = _timeline.Nodes[i + 1];
-        //        var baseFunc = EditorFunctions.Funcs[_functions[i]];
-        //        var endingValue = endingNode.y;
-        //        var startingValue = startingNode.y;
-        //        var amplitude = endingValue - startingValue;
-        //        var startingPoint = startingNode.x;
-        //        var endingPoint = endingNode.x;
-        //        var totalTime = 1 - (1 - endingPoint) - startingPoint;
-
-        //        Func<float, float> finalFunc = (t) =>
-        //        {
-        //            var time = (t - startingPoint) * (1 / totalTime);
-        //            return baseFunc(time) * amplitude + startingValue;
-        //        };
-
-        //        funcs[i] = finalFunc;
-        //    }
-
-        //    return (t) =>
-        //    {
-        //        float count = _functions.Length;
-        //        for (int i = 0; i < count; i++)
-        //        {
-        //            if (t >= _timeline.Nodes[i].x && t < _timeline.Nodes[i + 1].x)
-        //            {
-        //                return funcs[i](t);
-        //            }
-        //        }
-        //        return funcs[(int)count - 1](t);
-        //    };
-        //}
-
         public float Evaluate(float time)
         {
             var count = _functions.Length;

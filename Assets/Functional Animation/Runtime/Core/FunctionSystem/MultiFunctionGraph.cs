@@ -1,13 +1,15 @@
 using Aikom.FunctionalAnimation;
 using System;
 using UnityEngine;
+using Unity.Mathematics;
 
 namespace Aikom.FunctionalAnimation
 {
-    public class FunctionContainer : IDisposable
+    public class MultiFunctionGraph
     {
         private int _dimension;
         private RangedFunction[] _array;
+        private int2[] _strides;
 
         public int Dimension { get { return _dimension; } }
         public int Length { get { return _array.Length; } }
@@ -32,22 +34,24 @@ namespace Aikom.FunctionalAnimation
             }
         }
 
-        public FunctionContainer(int dimension, RangedFunction[] array)
-        {
-            if (array.Length != dimension * EFSettings.MaxFunctions)
-                throw new System.Exception("The container dimension must match maximum allowed capacity");
+        internal Span<RangedFunction> GetFunctionsInternal() => _array.AsSpan();
 
+        public MultiFunctionGraph(int dimension, RangedFunction[] array)
+        {
             _dimension = dimension;
             _array = array;
         }
 
-        public FunctionContainer(int dimension)
+        public MultiFunctionGraph(int dimension)
         {
             _dimension = dimension;
-            _array = new RangedFunction[dimension * EFSettings.MaxFunctions];
+            _strides = new int2[dimension];
+            for(int i = 0; i < dimension; i++)
+                _strides[i] = new int2(i, i + 1);
+            _array = new RangedFunction[dimension];
         }
 
-        public FunctionContainer(RangedFunction[] funcs, params int[] stride)
+        public MultiFunctionGraph(RangedFunction[] funcs, params int[] stride)
         {
             _dimension = stride.Length;
             _array = new RangedFunction[_dimension * EFSettings.MaxFunctions];
@@ -70,12 +74,14 @@ namespace Aikom.FunctionalAnimation
         /// <param name="func"></param>
         public void Set(int pos, int index, RangedFunction func)
         {
-            _array[(pos * EFSettings.MaxFunctions) + index] = func;
+            var start = _strides[pos].x;
+            _array[start + index] = func;
         }
 
-        public void Dispose()
+        private int GetSubGraphLength(int pos)
         {
-            GC.SuppressFinalize(this);
+            var stride = _strides[pos];
+            return stride.y - stride.x;
         }
     }
 }

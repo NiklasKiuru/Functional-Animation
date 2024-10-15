@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using Unity.Burst;
 using UnityEngine;
 
@@ -12,6 +13,7 @@ namespace Aikom.FunctionalAnimation
         private TimeControl _timeControl;
         private int _currentLoop;
         private int _maxLoopCount;
+        [MarshalAs(UnmanagedType.U1)]
         private bool _isCompleted;
 
         /// <summary>

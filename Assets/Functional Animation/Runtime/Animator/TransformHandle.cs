@@ -6,9 +6,9 @@ namespace Aikom.FunctionalAnimation
 {
     public class TransformHandle
     {
-        public IInterpolatorHandle<float3> Position { get; private set; }
-        public IInterpolatorHandle<float3> Rotation { get; private set; }
-        public IInterpolatorHandle<float3> Scale { get; private set; }
+        public IInterpolatorHandle<float3, Vector3Interpolator> Position { get; private set; }
+        public IInterpolatorHandle<float3, Vector3Interpolator> Rotation { get; private set; }
+        public IInterpolatorHandle<float3, Vector3Interpolator> Scale { get; private set; }
 
         public bool IsActive { get => math.any(new bool3(
             TryGetAliveHandle(TransformProperty.Position,out _), 
@@ -19,7 +19,7 @@ namespace Aikom.FunctionalAnimation
         {
         }
 
-        public bool TryGetHandle(TransformProperty prop, out IInterpolatorHandle<float3> handle)
+        public bool TryGetHandle(TransformProperty prop, out IInterpolatorHandle<float3, Vector3Interpolator> handle)
         {
             handle = null;
             if(prop == TransformProperty.Position && Position != null)
@@ -40,15 +40,15 @@ namespace Aikom.FunctionalAnimation
             return false;
         }
 
-        public bool TryGetAliveHandle(TransformProperty prop, out IInterpolatorHandle<float3> handle)
+        public bool TryGetAliveHandle(TransformProperty prop, out IInterpolatorHandle<float3, Vector3Interpolator> handle)
         {
-            if(TryGetHandle(prop, out handle) && handle.IsAlive)
+            if(TryGetHandle(prop, out handle) && handle.IsAlive())
                 return true;
             handle = null;
             return false;
         }
 
-        internal void Set(TransformProperty prop, IInterpolatorHandle<float3> handle)
+        internal void Set(TransformProperty prop, IInterpolatorHandle<float3, Vector3Interpolator> handle)
         {
             switch (prop)
             {

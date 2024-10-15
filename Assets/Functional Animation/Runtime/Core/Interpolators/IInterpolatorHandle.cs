@@ -1,34 +1,41 @@
+using Codice.Client.BaseCommands.Filters;
 using System;
+using System.ComponentModel;
 
 namespace Aikom.FunctionalAnimation
 {
     /// <summary>
     /// Public interface to control interpolator processes
     /// </summary>
-    /// <typeparam name="T"></typeparam>
-    public interface IInterpolatorHandle<T> : IGroupProcessor where T : unmanaged
+    /// <typeparam name="TStruct"></typeparam>
+    public interface IInterpolatorHandle<TStruct, TProcessor>
+        where TStruct : unmanaged
+        where TProcessor : unmanaged, IInterpolator<TStruct>
     {
-        /// <summary>
-        /// Gets the current interpolation value of this handle process
-        /// </summary>
-        /// <remarks>It is not recommended to use this option frequently. 
-        /// For frequent updates use <see cref="HandleExtensions.OnUpdate{T}(IInterpolatorHandle{T}, Action{T})"/></remarks>
-        public T GetValue();
+        public Process ProcessId { get; internal set; }
     }
 
     public static class HandleExtensions
     {   
+        public static bool IsAlive<TStruct, TProcessor>(this IInterpolatorHandle<TStruct, TProcessor> handle)
+            where TStruct : unmanaged
+            where TProcessor : unmanaged, IInterpolator<TStruct>
+        {
+            return ProcessCache.CheckValidity(handle.ProcessId) && ProcessCache.GetContext(handle.ProcessId).Status == ExecutionStatus.Running;
+        }
+
         /// <summary>
         /// Registers callbacks for this handle
         /// </summary>
-        /// <typeparam name="T"></typeparam>
+        /// <typeparam name="TStruct"></typeparam>
         /// <param name="handle"></param>
         /// <param name="cb"></param>
         /// <param name="flags"></param>
         /// <remarks>All callbacks are automatically void once the process dies so there is no need for unregistering</remarks>
         /// <returns></returns>
-        public static IInterpolatorHandle<T> RegisterCallback<T>(this IInterpolatorHandle<T> handle, Action<T> cb, EventFlags flags)
-            where T : unmanaged
+        public static IInterpolatorHandle<TStruct, TProcessor> RegisterCallback<TStruct, TProcessor>(this IInterpolatorHandle<TStruct, TProcessor> handle, Action<TStruct> cb, EventFlags flags)
+            where TStruct : unmanaged
+            where TProcessor : unmanaged, IInterpolator<TStruct>
         {
             if(cb != null && flags != EventFlags.None)
                 EFAnimator.RegisterStaticCallback(handle, cb, flags);
@@ -38,15 +45,16 @@ namespace Aikom.FunctionalAnimation
         /// <summary>
         /// Registers callbacks for this handle
         /// </summary>
-        /// <typeparam name="T"></typeparam>
+        /// <typeparam name="TStruct"></typeparam>
         /// <param name="handle"></param>
         /// <param name="cb"></param>
         /// <param name="flags"></param>
         /// <remarks>All callbacks are automatically void once the process dies so there is no need for unregistering</remarks>
         /// <returns></returns>
-        public static IInterpolatorHandle<T> RegisterCallback<T, D>(this IInterpolatorHandle<T> handle, D owner, Action<T> cb, EventFlags flags)
-            where T : unmanaged
-            where D : UnityEngine.Object
+        public static IInterpolatorHandle<TStruct, TProcessor> RegisterCallback<TStruct, TProcessor, TObject>(this IInterpolatorHandle<TStruct, TProcessor> handle, TObject owner, Action<TStruct> cb, EventFlags flags)
+            where TStruct : unmanaged
+            where TProcessor : unmanaged, IInterpolator<TStruct>
+            where TObject : UnityEngine.Object
         {
             if (cb != null && flags != EventFlags.None && owner != null)
                 EFAnimator.RegisterInstancedCallback(handle, owner, cb, flags);
@@ -62,9 +70,10 @@ namespace Aikom.FunctionalAnimation
         /// <param name="owner"></param>
         /// <param name="callback"></param>
         /// <returns></returns>
-        public static IInterpolatorHandle<T> OnComplete<T, D>(this IInterpolatorHandle<T> handle, D owner, Action<T> callback)
-            where T : unmanaged
-            where D : UnityEngine.Object
+        public static IInterpolatorHandle<TStruct, TProcessor> OnComplete<TStruct, TProcessor, TObject>(this IInterpolatorHandle<TStruct, TProcessor> handle, TObject owner, Action<TStruct> callback)
+            where TStruct : unmanaged
+            where TProcessor : unmanaged, IInterpolator<TStruct>
+            where TObject : UnityEngine.Object
             => RegisterCallback(handle, owner, callback, EventFlags.OnComplete);
         
         /// <summary>
@@ -74,32 +83,41 @@ namespace Aikom.FunctionalAnimation
         /// <param name="handle"></param>
         /// <param name="callback"></param>
         /// <returns></returns>
-        public static IInterpolatorHandle<T> OnComplete<T>(this IInterpolatorHandle<T> handle, Action<T> callback)
-            where T : unmanaged
+        public static IInterpolatorHandle<TStruct, TProcessor> OnComplete<TStruct, TProcessor>(this IInterpolatorHandle<TStruct, TProcessor> handle, Action<TStruct> callback)
+            where TStruct : unmanaged
+            where TProcessor : unmanaged, IInterpolator<TStruct>
             => RegisterCallback(handle, callback, EventFlags.OnComplete);
 
         /// <summary>
         /// Restarts the process. This can only be used on allocated processes
         /// </summary>
-        /// <typeparam name="T"></typeparam>
+        /// <typeparam name="TStruct"></typeparam>
         /// <param name="handle"></param>
         /// <returns></returns>
-        public static IInterpolatorHandle<T> Restart<T>(this IInterpolatorHandle<T> handle) 
-            where T : unmanaged
-        {   
-            EFAnimator.RestartProcess(handle);
+        public static IInterpolatorHandle<TStruct, TProcessor> Restart<TStruct, TProcessor>(this IInterpolatorHandle<TStruct, TProcessor> handle)
+            where TStruct : unmanaged
+            where TProcessor : unmanaged, IInterpolator<TStruct>
+        {
+            // Process exists
+            if (handle.IsAlive())
+            {
+
+            }
             return handle;
         }
 
         /// <summary>
         /// Inverts the direction of the current process
         /// </summary>
-        /// <typeparam name="T"></typeparam>
+        /// <typeparam name="TStruct"></typeparam>
         /// <param name="handle"></param>
         /// <returns></returns>
-        public static IInterpolatorHandle<T> Invert<T>(this IInterpolatorHandle<T> handle) where T : unmanaged
+        public static IInterpolatorHandle<TStruct, TProcessor> Invert<TStruct, TProcessor>(this IInterpolatorHandle<TStruct, TProcessor> handle) 
+            where TStruct : unmanaged
+            where TProcessor : unmanaged, IInterpolator<TStruct>
         {
-            EFAnimator.InvertProcess(handle);
+            ref var clock = ref ProcessCache.GetClock(handle.ProcessId);
+            clock.InvertDirection();
             return handle;
         }
 
@@ -109,62 +127,92 @@ namespace Aikom.FunctionalAnimation
         /// <typeparam name="T"></typeparam>
         /// <param name="handle"></param>
         /// <returns></returns>
-        public static IInterpolatorHandle<T> FlipValues<T>(this IInterpolatorHandle<T> handle) where T : unmanaged
+        public static IInterpolatorHandle<TStruct, TProcessor> FlipValues<TStruct, TProcessor>(this IInterpolatorHandle<TStruct, TProcessor> handle) 
+            where TStruct : unmanaged 
+            where TProcessor : unmanaged, IInterpolator<TStruct>
         {
-            EFAnimator.FlipValues(handle);
+            ref var start = ref ProcessCache.GetStart<TStruct, TProcessor>(handle.ProcessId);
+            ref var end = ref ProcessCache.GetStart<TStruct, TProcessor>(handle.ProcessId);
+
+            var temp0 = start;
+            var temp1 = end;
+
+            start = temp1;
+            end = temp0;
+
             return handle;
+        }
+
+        /// <summary>
+        /// Flips the values of interpolation process
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="handle"></param>
+        /// <returns></returns>
+        public static TStruct GetValue<TStruct, TProcessor>(this IInterpolatorHandle<TStruct, TProcessor> handle)
+            where TStruct : unmanaged
+            where TProcessor : unmanaged, IInterpolator<TStruct>
+        {
+            return ProcessCache.GetCurrent<TStruct, TProcessor>(handle.ProcessId);
         }
 
         /// <summary>
         /// Sets the current process as inactive for the given delay and continues after the delay has passed.
         /// Does not call OnPause or OnResume
         /// </summary>
-        /// <typeparam name="T"></typeparam>
+        /// <typeparam name="TStruct"></typeparam>
         /// <param name="handle"></param>
         /// <param name="delay"></param>
         /// <returns></returns>
-        public static IInterpolatorHandle<T> Hibernate<T>(this IInterpolatorHandle<T> handle, float delay)
-            where T : unmanaged
-        {   
-            // This is guaranteed to die once delay has been reached
-            var procId = EF.CreateNonAlloc(0, 1, delay, Function.Linear, TimeControl.PlayOnce, 1);
-            EFAnimator.SetPassiveFlagsInternal(procId, EventFlags.OnKill);
-
+        public static IInterpolatorHandle<TStruct, TProcessor> Hibernate<TStruct, TProcessor>(this IInterpolatorHandle<TStruct, TProcessor> handle, float delay)
+            where TStruct : unmanaged
+            where TProcessor : unmanaged, IInterpolator<TStruct>
+        {
             // Disable this handle internally temporarily
-            EFAnimator.ForceExecutionStatusExternal(handle, ExecutionStatus.Inactive);
+            ref var ctx = ref ProcessCache.GetContext(handle.ProcessId);
+            ctx.Status = ExecutionStatus.Inactive;
+
+            // This is guaranteed to die once delay has been reached
+            var delayHandle = EF.Create(0f, 1f, new FloatInterpolator(), delay);
 
             // Sets a callback to set the status of this handle back to running state once the earlier process dies
-            EFAnimator.RegisterStaticCallback<T>(procId, SetStatus, EventFlags.OnKill);
+            EFAnimator.RegisterStaticCallback<TStruct>(delayHandle.ProcessId, SetStatus, EventFlags.OnKill);
             return handle;
 
-            void SetStatus(T val) => EFAnimator.ForceExecutionStatusExternal(handle, ExecutionStatus.Running);
+            void SetStatus(TStruct val) 
+            {
+                ref var ctx = ref ProcessCache.GetContext(handle.ProcessId);
+                ctx.Status = ExecutionStatus.Running;
+            };
         }
 
         /// <summary>
         /// Registers a callback that is invoked once the process has been killed
         /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <typeparam name="D"></typeparam>
+        /// <typeparam name="TStruct"></typeparam>
+        /// <typeparam name="TObject"></typeparam>
         /// <param name="handle"></param>
         /// <param name="owner"></param>
         /// <param name="callback"></param>
         /// <returns></returns>
-        public static IInterpolatorHandle<T> OnKill<T, D>(this IInterpolatorHandle<T> handle, D owner, Action<T> callback) 
-            where T : unmanaged
-            where D : UnityEngine.Object
+        public static IInterpolatorHandle<TStruct, TProcessor> OnKill<TStruct, TProcessor, TObject>(this IInterpolatorHandle<TStruct, TProcessor> handle, TObject owner, Action<TStruct> callback) 
+            where TStruct : unmanaged
+            where TObject : UnityEngine.Object
+            where TProcessor : unmanaged, IInterpolator<TStruct>
             => RegisterCallback(handle, owner, callback, EventFlags.OnKill);
 
         /// <summary>
         /// Registers a callback that is invoked once the process has been killed
         /// </summary>
-        /// <typeparam name="T"></typeparam>
+        /// <typeparam name="TStruct"></typeparam>
         /// <typeparam name="D"></typeparam>
         /// <param name="handle"></param>
         /// <param name="owner"></param>
         /// <param name="callback"></param>
         /// <returns></returns>
-        public static IInterpolatorHandle<T> OnKill<T>(this IInterpolatorHandle<T> handle, Action<T> callback)
-            where T : unmanaged
+        public static IInterpolatorHandle<TStruct, TProcessor> OnKill<TStruct, TProcessor>(this IInterpolatorHandle<TStruct, TProcessor> handle, Action<TStruct> callback)
+            where TStruct : unmanaged
+            where TProcessor : unmanaged, IInterpolator<TStruct>
             => RegisterCallback(handle, callback, EventFlags.OnKill);
 
         /// <summary>
@@ -176,34 +224,37 @@ namespace Aikom.FunctionalAnimation
         /// <param name="owner"></param>
         /// <param name="callback"></param>
         /// <returns></returns>
-        public static IInterpolatorHandle<T> OnResume<T, D>(this IInterpolatorHandle<T> handle, D owner, Action<T> callback)
-            where T : unmanaged
-            where D : UnityEngine.Object
+        public static IInterpolatorHandle<TStruct, TProcessor> OnResume<TStruct, TProcessor, TObject>(this IInterpolatorHandle<TStruct, TProcessor> handle, TObject owner, Action<TStruct> callback)
+            where TStruct : unmanaged
+            where TObject : UnityEngine.Object
+            where TProcessor : unmanaged, IInterpolator<TStruct>
             => RegisterCallback(handle, owner, callback, EventFlags.OnResume);
 
         /// <summary>
         /// Registers a callback that is invoked once the process resumes
         /// </summary>
-        /// <typeparam name="T"></typeparam>
+        /// <typeparam name="TStruct"></typeparam>
         /// <param name="handle"></param>
         /// <param name="callback"></param>
         /// <returns></returns>
-        public static IInterpolatorHandle<T> OnResume<T>(this IInterpolatorHandle<T> handle, Action<T> callback)
-            where T : unmanaged
+        public static IInterpolatorHandle<TStruct, TProcessor> OnResume<TStruct, TProcessor>(this IInterpolatorHandle<TStruct, TProcessor> handle, Action<TStruct> callback)
+            where TStruct : unmanaged
+            where TProcessor : unmanaged, IInterpolator<TStruct>
             => RegisterCallback(handle, callback, EventFlags.OnResume);
 
         /// <summary>
         /// Registers a callback that is invoked once the process starts for the first time
         /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <typeparam name="D"></typeparam>
+        /// <typeparam name="TStruct"></typeparam>
+        /// <typeparam name="TObject"></typeparam>
         /// <param name="handle"></param>
         /// <param name="owner"></param>
         /// <param name="callback"></param>
         /// <returns></returns>
-        public static IInterpolatorHandle<T> OnStart<T, D>(this IInterpolatorHandle<T> handle, D owner, Action<T> callback)
-            where T : unmanaged
-            where D : UnityEngine.Object
+        public static IInterpolatorHandle<TStruct, TProcessor> OnStart<TStruct, TProcessor, TObject>(this IInterpolatorHandle<TStruct, TProcessor> handle, TObject owner, Action<TStruct> callback)
+            where TStruct : unmanaged
+            where TObject : UnityEngine.Object
+            where TProcessor : unmanaged, IInterpolator<TStruct>
             => RegisterCallback(handle, owner, callback, EventFlags.OnStart);
 
         /// <summary>
@@ -213,8 +264,9 @@ namespace Aikom.FunctionalAnimation
         /// <param name="handle"></param>
         /// <param name="callback"></param>
         /// <returns></returns>
-        public static IInterpolatorHandle<T> OnStart<T>(this IInterpolatorHandle<T> handle, Action<T> callback)
-            where T : unmanaged
+        public static IInterpolatorHandle<TStruct, TProcessor> OnStart<TStruct, TProcessor>(this IInterpolatorHandle<TStruct, TProcessor> handle, Action<TStruct> callback)
+            where TStruct : unmanaged
+            where TProcessor : unmanaged, IInterpolator<TStruct>
             => RegisterCallback(handle, callback, EventFlags.OnStart);
 
         /// <summary>
@@ -226,9 +278,10 @@ namespace Aikom.FunctionalAnimation
         /// <param name="owner"></param>
         /// <param name="callback"></param>
         /// <returns></returns>
-        public static IInterpolatorHandle<T> OnUpdate<T, D>(this IInterpolatorHandle<T> handle, D owner, Action<T> callback)
-            where T : unmanaged
-            where D : UnityEngine.Object
+        public static IInterpolatorHandle<TStruct, TProcessor> OnUpdate<TStruct, TProcessor, TObject>(this IInterpolatorHandle<TStruct, TProcessor> handle, TObject owner, Action<TStruct> callback) 
+            where TStruct : unmanaged 
+            where TObject : UnityEngine.Object 
+            where TProcessor : unmanaged, IInterpolator<TStruct>
             => RegisterCallback(handle, owner, callback, EventFlags.OnUpdate);
 
         /// <summary>
@@ -240,8 +293,9 @@ namespace Aikom.FunctionalAnimation
         /// <param name="owner"></param>
         /// <param name="callback"></param>
         /// <returns></returns>
-        public static IInterpolatorHandle<T> OnUpdate<T>(this IInterpolatorHandle<T> handle, Action<T> callback)
-            where T : unmanaged
+        public static IInterpolatorHandle<TStruct, TProcessor> OnUpdate<TStruct, TProcessor>(this IInterpolatorHandle<TStruct, TProcessor> handle, Action<TStruct> callback)
+            where TStruct : unmanaged
+            where TProcessor : unmanaged, IInterpolator<TStruct>
             => RegisterCallback(handle, callback, EventFlags.OnUpdate);
 
         /// <summary>
@@ -253,9 +307,10 @@ namespace Aikom.FunctionalAnimation
         /// <param name="owner"></param>
         /// <param name="callback"></param>
         /// <returns></returns>
-        public static IInterpolatorHandle<T> OnPause<T, D>(this IInterpolatorHandle<T> handle, D owner, Action<T> callback)
-            where T : unmanaged
-            where D : UnityEngine.Object
+        public static IInterpolatorHandle<TStruct, TProcessor> OnPause<TStruct, TProcessor, TObject>(this IInterpolatorHandle<TStruct, TProcessor> handle, TObject owner, Action<TStruct> callback) 
+            where TStruct : unmanaged 
+            where TObject : UnityEngine.Object 
+            where TProcessor : unmanaged, IInterpolator<TStruct>
             => RegisterCallback(handle, owner, callback, EventFlags.OnPause);
 
         /// <summary>
@@ -265,8 +320,9 @@ namespace Aikom.FunctionalAnimation
         /// <param name="handle"></param>
         /// <param name="callback"></param>
         /// <returns></returns>
-        public static IInterpolatorHandle<T> OnPause<T>(this IInterpolatorHandle<T> handle, Action<T> callback)
-            where T : unmanaged
+        public static IInterpolatorHandle<TStruct, TProcessor> OnPause<TStruct, TProcessor>(this IInterpolatorHandle<TStruct, TProcessor> handle, Action<TStruct> callback) 
+            where TStruct : unmanaged 
+            where TProcessor : unmanaged, IInterpolator<TStruct>
             => RegisterCallback(handle, callback, EventFlags.OnPause);
 
         /// <summary>
@@ -274,10 +330,13 @@ namespace Aikom.FunctionalAnimation
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="handle"></param>
-        public static IInterpolatorHandle<T> Pause<T>(this IInterpolatorHandle<T> handle) where T : unmanaged
+        public static IInterpolatorHandle<TStruct, TProcessor> Pause<TStruct, TProcessor>(this IInterpolatorHandle<TStruct, TProcessor> handle)
+            where TStruct : unmanaged
+            where TProcessor : unmanaged, IInterpolator<TStruct>
         {
-            CallbackRegistry.TryCall(new EventData<T>() { Id = handle.Id, Flags = EventFlags.OnPause, Value = handle.GetValue() });
-            EFAnimator.ForceExecutionStatusExternal(handle, ExecutionStatus.Paused);
+            ref var ctx = ref ProcessCache.GetContext(handle.ProcessId);
+            ctx.ActiveFlags |= EventFlags.OnPause; // Forces the next call cycle to call pause delegates
+            ctx.Status = ExecutionStatus.Paused;
             return handle;
         }
 
@@ -286,10 +345,13 @@ namespace Aikom.FunctionalAnimation
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="handle"></param>
-        public static IInterpolatorHandle<T> Resume<T>(this IInterpolatorHandle<T> handle) where T : unmanaged
+        public static IInterpolatorHandle<TStruct, TProcessor> Resume<TStruct, TProcessor>(this IInterpolatorHandle<TStruct, TProcessor> handle)
+            where TStruct : unmanaged
+            where TProcessor : unmanaged, IInterpolator<TStruct>
         {
-            CallbackRegistry.TryCall(new EventData<T>() { Id = handle.Id, Flags = EventFlags.OnResume, Value = handle.GetValue() });
-            EFAnimator.ForceExecutionStatusExternal(handle, ExecutionStatus.Running);
+            ref var ctx = ref ProcessCache.GetContext(handle.ProcessId);
+            ctx.ActiveFlags |= EventFlags.OnResume; // Forces the next call cycle to call resume delegates
+            ctx.Status = ExecutionStatus.Running;
             return handle;
         }
 
@@ -299,20 +361,25 @@ namespace Aikom.FunctionalAnimation
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="handle"></param>
-        public static IInterpolatorHandle<T> Complete<T>(this IInterpolatorHandle<T> handle) where T : unmanaged
+        public static IInterpolatorHandle<TStruct, TProcessor> Complete<TStruct, TProcessor>(this IInterpolatorHandle<TStruct, TProcessor> handle) 
+            where TStruct : unmanaged
+            where TProcessor : unmanaged, IInterpolator<TStruct>
         {
-            EFAnimator.ForceExecutionStatusExternal(handle, ExecutionStatus.Completed);
+            ref var ctx = ref ProcessCache.GetContext(handle.ProcessId);
+            ctx.Status = ExecutionStatus.Completed;
             return handle;
         }
 
         /// <summary>
-        /// Kills the process immediatly and ingores OnComplete flags
+        /// Kills the process and ingores OnComplete flags
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="handle"></param>
-        public static IInterpolatorHandle<T> Kill<T>(this IInterpolatorHandle<T> handle) where T : unmanaged
+        public static IInterpolatorHandle<TStruct, TProcessor> Kill<TStruct, TProcessor>(this IInterpolatorHandle<TStruct, TProcessor> handle)
+            where TStruct : unmanaged
+            where TProcessor : unmanaged, IInterpolator<TStruct>
         {
-            EFAnimator.KillTargetExternal(handle);
+            //EFAnimator.KillTargetExternal(handle);
             return handle;
         }
 
@@ -323,10 +390,12 @@ namespace Aikom.FunctionalAnimation
         /// <param name="handle"></param>
         /// <param name="count"></param>
         /// <returns></returns>
-        public static IInterpolatorHandle<T> SetLoopLimit<T>(this IInterpolatorHandle<T> handle, int count)
-            where T : unmanaged
+        public static IInterpolatorHandle<TStruct, TProcessor> SetLoopLimit<TStruct, TProcessor>(this IInterpolatorHandle<TStruct, TProcessor> handle, int count)
+            where TStruct : unmanaged
+            where TProcessor : unmanaged, IInterpolator<TStruct>
         {
-            EFAnimator.SetMaxLoopCountExternal(handle, count);
+            ref var clock = ref ProcessCache.GetClock(handle.ProcessId);
+            clock.MaxLoops = count;
             return handle;
         }
 
@@ -337,8 +406,9 @@ namespace Aikom.FunctionalAnimation
         /// <param name="handle"></param>
         /// <param name="cb"></param>
         /// <returns></returns>
-        public static IInterpolatorHandle<T> OnLoopCompleted<T>(this IInterpolatorHandle<T> handle, Action<T> cb)
-            where T : unmanaged
+        public static IInterpolatorHandle<TStruct, TProcessor> OnLoopCompleted<TStruct, TProcessor>(this IInterpolatorHandle<TStruct, TProcessor> handle, Action<TStruct> cb)
+            where TStruct : unmanaged
+            where TProcessor : unmanaged, IInterpolator<TStruct>
             => RegisterCallback(handle, cb, EventFlags.OnLoopCompleted);
 
         /// <summary>
@@ -348,9 +418,10 @@ namespace Aikom.FunctionalAnimation
         /// <param name="handle"></param>
         /// <param name="cb"></param>
         /// <returns></returns>
-        public static IInterpolatorHandle<T> OnLoopCompleted<T, D>(this IInterpolatorHandle<T> handle, D owner, Action<T> cb)
-            where T : unmanaged
-            where D : UnityEngine.Object
+        public static IInterpolatorHandle<TStruct, TProcessor> OnLoopCompleted<TStruct, TProcessor, TObject>(this IInterpolatorHandle<TStruct, TProcessor> handle, TObject owner, Action<TStruct> cb)
+            where TStruct : unmanaged
+            where TProcessor : unmanaged, IInterpolator<TStruct>
+            where TObject : UnityEngine.Object
             => RegisterCallback(handle, owner, cb, EventFlags.OnLoopCompleted);
 
     }

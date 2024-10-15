@@ -37,20 +37,21 @@ namespace Aikom.FunctionalAnimation
                 var data = anim[prop];
                 if (!data.Animate)
                     continue;
-
+                
                 var from = data.Mode == AnimationMode.Absolute ? data.Start : prop.GetValue(target);
                 var to = data.Mode == AnimationMode.Absolute ? data.Target : prop.GetValue(target) + data.Offset;
                 if (!data.SeparateAxis)
                 {
                     var sharedGraph = data[Axis.W];
-                    var sharedHandle = EF.Create(from, to, data.Duration, sharedGraph, data.TimeControl)
+                    var sharedHandle = EF.Create((float3)from, (float3)to, new Vector3Interpolator(sharedGraph.Length), data.Duration, sharedGraph, data.TimeControl)
                         .OnUpdate(target, SetVal);
                     animator.Handle.Set(prop, sharedHandle);
                 }
                 else
                 {
-                    var mixedHandle = EF.Create(from, to, data.Duration,
-                        data[Axis.X], data[Axis.Y], data[Axis.Z], data.AnimateableAxis, data.TimeControl)
+                    var counter = new int3(data[Axis.X].Length, data[Axis.Y].Length, data[Axis.Z].Length);
+                    var mixedHandle = EF.Create<float, float3, Vector3Interpolator>((float3)from, (float3)to, new Vector3Interpolator(counter), data.Duration, data.TimeControl,
+                        data[Axis.X], data[Axis.Y], data[Axis.Z])
                         .OnUpdate(target, SetVal);
                     animator.Handle.Set(prop, mixedHandle);
                 }
